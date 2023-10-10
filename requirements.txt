@@ -1,0 +1,7 @@
+identity>=0.2,<0.3
+flask
+requests
+Flask-Session>=0.3.2,<0.6
+werkzeug>=2
+python-dotenv
+pymongo

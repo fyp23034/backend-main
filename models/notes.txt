@@ -1,0 +1,19 @@
+useful email fields:
+1. flagStatus
+2. isRead
+3. isDraft
+4, body, subject, bodyPreview
+5. sender
+6. receiver
+7. ccRecipients
+8. bccRecipients
+
+useful user fields:
+1. displayName
+2. mail
+3. firstName, surname
+
+useful links (validating SPF/DMARC/DKIM):
+1. https://github.com/MarkoH17/EmailSecCheck
+2. https://pypi.org/project/checkdmarc/
+3. https://medium.com/@vand3rlinden/spf-dkim-and-dmarc-explanation-9e98aafaf7e6
