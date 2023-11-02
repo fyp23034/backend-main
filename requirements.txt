@@ -5,3 +5,4 @@ Flask-Session>=0.3.2,<0.6
 werkzeug>=2
 python-dotenv
 pymongo
+pytest
