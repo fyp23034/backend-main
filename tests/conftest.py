@@ -2,9 +2,6 @@ import pytest
 from app import app
 
 @pytest.fixture
-def app():
-    return app
-
-@pytest.fixture
-def client(app):
-    return app.test_client()
+def client():
+    with app.test_client() as client:
+        yield client

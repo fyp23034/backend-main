@@ -76,15 +76,22 @@ def getEmail(id):
 @emails.route('/getByCategory', methods=['GET'])
 def getByCategory():
     try:
+        accessToken = request.headers.get('Access-Token')
+        userResponse = getUser(accessToken)
+        if 'error' in userResponse:
+            return {'error': True, 'message': userResponse['message']}
         pageNum = request.args.get('page')
         pageNum = int(pageNum)
         category = request.args.get('category')
+
+        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+
         if category == "":
             category = None
         # pageSize = 50
         pageSize = 10   # for testing purposes
         skipAmount = (pageNum-1)*pageSize
-        emails = colEmails.find({'category': category}).sort('receivedTime', -1).skip(skipAmount).limit(pageSize)
+        emails = colEmails.find({'category': category, 'userId': userId}).sort('receivedTime', -1).skip(skipAmount).limit(pageSize)
         emailsPerPage = []
         for email in emails:
             emailsPerPage.append({
@@ -97,3 +104,7 @@ def getByCategory():
         return {'error': False, 'emails': emailsPerPage}
     except Exception as e:
         return {'error': True, 'message': e}
+    
+@emails.route('/random')
+def test():
+    return {'error': False, 'random': 'random'}
