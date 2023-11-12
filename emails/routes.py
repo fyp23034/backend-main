@@ -12,6 +12,9 @@ colMetrics = db.emailAiMetrics
 @emails.route('/', methods=['GET'])
 def getEmailsPerPage():
     accessToken = request.headers.get('Access-Token')
+    # if 'page' is not in request, default to 1
+    if 'page' not in request.args:
+        pageNum = 1
     pageNum = request.args.get('page')
     pageNum = int(pageNum)
     headers = {"Authorization": f"Bearer {accessToken}"}
@@ -38,7 +41,6 @@ def getEmailsPerPage():
     emailsPerPage = []
     for email in response['value']:
         processRes = processEmail(email, userId, emailsPerPage)
-        print(processRes)
         if not processRes[0]:
             return {'error': True, 'message': processRes[1]}
 
@@ -53,7 +55,7 @@ def getEmailsPerPage():
             if not processRes[0]:
                 return {'error': True, 'message': processRes[1]}
 
-    return {'error': False, 'emails': emailsPerPage}
+    return {'error': False, 'emails': emailsPerPage, 'totalEmails': len(emailsPerPage)}
 
 @emails.route('/<string:id>', methods=['GET'])
 def getEmail(id):
@@ -88,8 +90,8 @@ def getByCategory():
 
         if category == "":
             category = None
-        # pageSize = 50
-        pageSize = 10   # for testing purposes
+        pageSize = 50
+        # pageSize = 10   # for testing purposes
         skipAmount = (pageNum-1)*pageSize
         emails = colEmails.find({'category': category, 'userId': userId}).sort('receivedTime', -1).skip(skipAmount).limit(pageSize)
         emailsPerPage = []
@@ -101,7 +103,7 @@ def getByCategory():
                 'id': email['outlookId'],
                 'sender': email['sender']
             })
-        return {'error': False, 'emails': emailsPerPage}
+        return {'error': False, 'emails': emailsPerPage, 'totalEmails': len(emailsPerPage)}
     except Exception as e:
         return {'error': True, 'message': e}
     
