@@ -2,6 +2,7 @@ from flask import Flask, Blueprint, request
 from emails import emails, client
 import requests
 from universal.getUser import getUser
+from bs4 import BeautifulSoup
 from emails.process import processEmail
 
 db = client.fyp
@@ -110,3 +111,30 @@ def getByCategory():
 @emails.route('/random')
 def test():
     return {'error': False, 'random': 'random'}
+
+@emails.route('/changeCategory', methods=['POST'])
+def changeCategory():
+    try:
+        outlookId = request.json['id']
+        category = request.json['newCategory']
+        colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': category}})
+        return {'error': False}
+    except:
+        return {'error': True, 'message': 'Invalid email ID or database error'}
+
+@emails.route('/getSummary/<string:id>', methods=['GET'])
+def summarise():
+    try:
+        # GET THE EMAIL BODY HERE
+        email = colEmails.find_one({'outlookId': id})
+        body = email['body']
+
+        # use beautiful soup to remove html tags
+        soup = BeautifulSoup(body, 'html.parser')
+        body = soup.get_text()
+
+        # CALL THE SUMMARISATION API HERE
+
+        return {'error': False, 'summary': 'This is a summary of the email'}
+    except:
+        return {'error': True, 'message': 'Summary error'}
