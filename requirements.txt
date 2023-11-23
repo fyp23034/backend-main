@@ -6,3 +6,4 @@ werkzeug>=2
 python-dotenv
 pymongo
 pytest
+bs4
