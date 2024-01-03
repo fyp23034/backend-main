@@ -13,6 +13,7 @@ colMetrics = db.emailAiMetrics
 @emails.route('/', methods=['GET'])
 def getEmailsPerPage():
     accessToken = request.headers.get('Access-Token')
+
     # if 'page' is not in request, default to 1
     if 'page' not in request.args:
         pageNum = 1
@@ -108,9 +109,10 @@ def getByCategory():
     except Exception as e:
         return {'error': True, 'message': e}
     
-@emails.route('/random')
+# some test route for testing purposes only
+@emails.route('/test')
 def test():
-    return {'error': False, 'random': 'random'}
+    return {'error': False}
 
 @emails.route('/changeCategory', methods=['POST'])
 def changeCategory():
