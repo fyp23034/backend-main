@@ -114,10 +114,10 @@ def getByCategory():
 def test():
     return {'error': False}
 
-@emails.route('/changeCategory', methods=['POST'])
-def changeCategory():
+@emails.route('/changeCategory/<string:id>', methods=['POST'])
+def changeCategory(id):
     try:
-        outlookId = request.json['id']
+        outlookId = id
         category = request.json['newCategory']
         colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': category}})
         return {'error': False}
