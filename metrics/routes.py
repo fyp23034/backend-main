@@ -29,7 +29,7 @@ def updateTime(id):
         return {'error': True, 'message': e}
 
 @metrics.route('/recordClick/<string:id>', methods=['POST'])
-def recordClick():
+def recordClick(id):
     try:
         currEmail = colEmails.find_one({'outlookId': id})
         currMetrics = colMetrics.find_one({'outlookId': id})

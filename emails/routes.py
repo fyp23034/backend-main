@@ -37,7 +37,7 @@ def getEmailsPerPage():
     # get the _id field from recipient
     userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
 
-    # get the first 10 emails and process them
+    # get the first n emails and process them
     endpoint = f"https://graph.microsoft.com/v1.0/me/messages?&$filter=receivedDateTime ge 1900-01-01T00:00:00Z and (not (sender/emailAddress/address eq '{userEmail}'))&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$orderby=receivedDateTime desc&$skip={(pageNum-1)*50}"
     response = requests.get(endpoint,headers=headers).json()
     emailsPerPage = []
@@ -114,10 +114,10 @@ def getByCategory():
 def test():
     return {'error': False}
 
-@emails.route('/changeCategory', methods=['POST'])
-def changeCategory():
+@emails.route('/changeCategory/<string:id>', methods=['POST'])
+def changeCategory(id):
     try:
-        outlookId = request.json['id']
+        outlookId = id
         category = request.json['newCategory']
         colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': category}})
         return {'error': False}
