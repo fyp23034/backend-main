@@ -4,11 +4,14 @@ import requests
 from universal.getUser import getUser
 from bs4 import BeautifulSoup
 from emails.process import processEmail
+import openai
 
 db = client.fyp
 colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
+
+summarizerPrompt = "You are an email summarization bot. Please summarize emails I provide you."
 
 @emails.route('/', methods=['GET'])
 def getEmailsPerPage():
@@ -125,7 +128,7 @@ def changeCategory(id):
         return {'error': True, 'message': 'Invalid email ID or database error'}
 
 @emails.route('/getSummary/<string:id>', methods=['GET'])
-def summarise():
+def summarise(id):
     try:
         # GET THE EMAIL BODY HERE
         email = colEmails.find_one({'outlookId': id})
@@ -136,7 +139,15 @@ def summarise():
         body = soup.get_text()
 
         # CALL THE SUMMARISATION API HERE
-
-        return {'error': False, 'summary': 'This is a summary of the email'}
-    except:
-        return {'error': True, 'message': 'Summary error'}
+        prompt = [{"role": "system", "content": summarizerPrompt}, {"role": "user", "content": body}]
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=prompt,
+            temperature=0.7,
+            presence_penalty=0,
+            max_tokens=1000
+        )
+        return {'error': False, 'summary': str(response["choices"][0]["message"]["content"])}
+    except Exception as e:
+        print(e)
+        return {'error': True, 'message': 'Something went wrong or this email has no summarizable body'}

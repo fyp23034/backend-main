@@ -152,3 +152,31 @@ pm.test("Error field is a boolean value", function () {
 pm.test("Verify Content-Type header is application/json", function () {
     pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
 });
+
+// ---------------------------------------------------------
+// Tests for /getSummary
+// ---------------------------------------------------------
+
+pm.test("Response status code is 200", function () {
+    pm.expect(pm.response.code).to.equal(200);
+});
+
+pm.test("Content type is application/json", function () {
+    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+});
+
+pm.test("Error field is present in the response", function () {
+    const responseData = pm.response.json();
+    pm.expect(responseData.error).to.exist;
+});
+
+pm.test("Summary field is present in the response", function () {
+    const responseData = pm.response.json();
+    pm.expect(responseData.summary).to.exist;
+});
+
+pm.test("Error field is a boolean value", function () {
+    const responseData = pm.response.json();
+    pm.expect(responseData).to.be.an('object');
+    pm.expect(responseData.error).to.be.a('boolean');
+});
