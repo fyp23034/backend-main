@@ -79,7 +79,7 @@ In addition, the response will include an "error" field indicating whether there
                 "subject": "",
             }
         },
-        "error": true / false,
+        "error": false,
     }
     
      ```
@@ -129,7 +129,7 @@ Example:
             "time": ""
         }
     ],
-    "error": true,
+    "error": false,
     "totalEmails": 0
 }
 
@@ -160,7 +160,7 @@ Example:
 
 ``` json
 {
-    "error": true / false
+    "error": false
 }
 
  ```
