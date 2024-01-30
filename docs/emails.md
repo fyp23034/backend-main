@@ -35,7 +35,7 @@ This endpoint makes an HTTP GET request to retrieve a list of emails, with an op
                 "time": ""
             }
         ],
-        "error": true / false,
+        "error": false,
         "totalEmails": 0
     }
     
