@@ -17,6 +17,7 @@ def handle_preflight():
         res = Response()
         res.headers['X-Content-Type-Options'] = '*'
         res.headers['Access-Control-Allow-Origin'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = '*'
         res.headers['Access-Control-Allow-Headers'] = '*'
         return res
 
