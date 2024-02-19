@@ -17,8 +17,13 @@ def handle_preflight():
         res = Response()
         res.headers['X-Content-Type-Options'] = '*'
         res.headers['Access-Control-Allow-Origin'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = '*'
         res.headers['Access-Control-Allow-Headers'] = '*'
         return res
+
+@app.route('/health', methods=['GET', 'POST'])
+def healthGet():
+    return {'status': 'OK'}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
