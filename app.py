@@ -11,14 +11,15 @@ app.register_blueprint(emails, url_prefix='/emails')
 app.register_blueprint(metrics, url_prefix='/metrics')
 app.register_blueprint(pref, url_prefix='/pref')
 
+# Source: https://fetch.spec.whatwg.org/
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
         res = Response()
         res.headers['X-Content-Type-Options'] = '*'
         res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Methods'] = '*'
-        res.headers['Access-Control-Allow-Headers'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = 'GET, POST'
+        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Access-Token'
         return res
 
 @app.route('/health', methods=['GET', 'POST'])
