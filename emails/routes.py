@@ -41,8 +41,9 @@ def getEmailsPerPage():
     userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
 
     # get the first n emails and process them
-    endpoint = f"https://graph.microsoft.com/v1.0/me/messages?&$filter=receivedDateTime ge 1900-01-01T00:00:00Z and (not (sender/emailAddress/address eq '{userEmail}'))&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$orderby=receivedDateTime desc&$skip={(pageNum-1)*50}"
+    endpoint = f"https://graph.microsoft.com/v1.0/me/messages?&$filter=receivedDateTime ge 1900-01-01T00:00:00Z and (not (sender/emailAddress/address eq '{userEmail}'))&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$orderby=receivedDateTime desc&$skip={(pageNum-1)*50}&$count=true"
     response = requests.get(endpoint,headers=headers).json()
+    totalEmails = response['@odata.count']
     emailsPerPage = []
     for email in response['value']:
         processRes = processEmail(email, userId, emailsPerPage)
@@ -60,7 +61,7 @@ def getEmailsPerPage():
             if not processRes[0]:
                 return {'error': True, 'message': processRes[1]}
 
-    return {'error': False, 'emails': emailsPerPage, 'totalEmails': len(emailsPerPage)}
+    return {'error': False, 'emails': emailsPerPage, 'totalEmails': totalEmails}
 
 @emails.route('/<string:id>', methods=['GET'])
 def getEmail(id):
