@@ -68,7 +68,7 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
 
         emailObj = {
             'subject': email['subject'],
-            'time': email['receivedDateTime'],
+            'time': int(datetime.datetime.strptime(email['receivedDateTime'], '%Y-%m-%dT%H:%M:%SZ').timestamp()),
             'bodyPreview': email['bodyPreview'],
             'sender': email['sender']['emailAddress'],
             'id': email['id']
