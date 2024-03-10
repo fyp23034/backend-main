@@ -2,6 +2,7 @@ from flask import Flask, Blueprint, request
 from emails import emails, client
 import requests
 from universal.getUser import getUser
+import datetime
 
 db = client.fyp
 colEmails = db.emails
@@ -23,7 +24,7 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
         if emailInDb:
             emailsPerPage.append({
                 'subject': emailInDb['subject'],
-                'time': emailInDb['receivedTime'],
+                'time': int(datetime.datetime.strptime(emailInDb['receivedDateTime'], '%Y-%m-%dT%H:%M:%SZ').timestamp()),
                 'bodyPreview': emailInDb['bodyPreview'],
                 'id': emailInDb['outlookId'],
                 'sender': emailInDb['sender']
@@ -42,7 +43,7 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'outlookId': email['id'],
             'userId': userId,
             'subject': email['subject'],
-            'receivedTime': email['receivedDateTime'],
+            'receivedTime': int(datetime.datetime.strptime(email['receivedDateTime'], '%Y-%m-%dT%H:%M:%SZ').timestamp()),
             'body': email['body']['content'],
             'cc': [],
             'bcc': [],
