@@ -24,7 +24,7 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
         if emailInDb:
             emailsPerPage.append({
                 'subject': emailInDb['subject'],
-                'time': int(datetime.datetime.strptime(emailInDb['receivedDateTime'], '%Y-%m-%dT%H:%M:%SZ').timestamp()),
+                'time': emailInDb['receivedTime'],
                 'bodyPreview': emailInDb['bodyPreview'],
                 'id': emailInDb['outlookId'],
                 'sender': emailInDb['sender']
