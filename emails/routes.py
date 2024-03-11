@@ -70,6 +70,8 @@ def getEmail(id):
         endpoint = f"https://graph.microsoft.com/v1.0/me/messages/{id}?&$select=sender,subject,body,ccRecipients,bccRecipients"
         headers = {"Authorization": f"Bearer {accessToken}"}
         response = requests.get(endpoint,headers=headers).json()
+        if 'error' in response:
+            return {'error': True, 'message': response['error']['message']}, 500
         emailObj = {
             'subject': response['subject'],
             'body': response['body']['content'],
@@ -78,8 +80,9 @@ def getEmail(id):
             'sender': response['sender']['emailAddress']
         }
         return {'error': False, 'email': emailObj}
-    except:
-        return {'error': True, 'message': 'Invalid access token'}
+    except Exception as e:
+        print(e)
+        return {'error': True, 'message': 'Invalid access token'}, 500
 
 @emails.route('/getByCategory', methods=['GET'])
 def getByCategory():
@@ -111,7 +114,8 @@ def getByCategory():
             })
         return {'error': False, 'emails': emailsPerPage, 'totalEmails': len(emailsPerPage)}
     except Exception as e:
-        return {'error': True, 'message': e}
+        print(e)
+        return {'error': True, 'message': 'Invalid cateogyr or database error'}
     
 # some test route for testing purposes only
 @emails.route('/test')
@@ -125,7 +129,8 @@ def changeCategory(id):
         category = request.json['newCategory']
         colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': category}})
         return {'error': False}
-    except:
+    except Exception as e:
+        print(e)
         return {'error': True, 'message': 'Invalid email ID or database error'}
 
 @emails.route('/getSummary/<string:id>', methods=['GET'])
