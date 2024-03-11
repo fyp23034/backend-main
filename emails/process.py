@@ -60,7 +60,8 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'timesClicked': 0,
             'timeSpent': 0,
             'outlookId': email['id'],
-            'aiScore': None
+            'category': None,
+            'importanceScore': None
         })
 
         # async categorization
