@@ -68,7 +68,7 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'timeSpent': 0,
             'outlookId': email['id'],
             'category': None,
-            'importanceScore': 0
+            'importanceScore': -1
         })
 
         thread = threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id,))
