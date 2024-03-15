@@ -18,8 +18,8 @@ def handle_preflight():
         res = Response()
         res.headers['X-Content-Type-Options'] = '*'
         res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Methods'] = 'GET, POST'
-        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Access-Token'
+        res.headers['Access-Control-Allow-Methods'] = '*'
+        res.headers['Access-Control-Allow-Headers'] = '*'
         return res
 
 @app.route('/health', methods=['GET', 'POST'])
