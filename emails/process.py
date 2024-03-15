@@ -2,20 +2,27 @@ from flask import Flask, Blueprint, request
 from emails import emails, client
 import requests
 from universal.getUser import getUser
+import universal.logic as logic
 import datetime
+import threading
 
 db = client.fyp
 colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
 
-def categorizeIndividualEmail(email):
-    # should be async
-    return "CALL JUSTIN'S API"
+def categorizeIndividualEmail(emailId):
+
+    # TODO: Include SPF, DKIM, DMARC, and other email security checks
+
+    print(str(emailId))
+    aiScore = logic.emailCategory(str(emailId))
+    colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
+    return
 
 def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by reference
 
-    # TODO: Categorize email, add async support for database insertions
+    # TODO: Implement read-through, write-back db cache
 
     try:
         emailInDb = colEmails.find_one({'outlookId': email['id']})
@@ -61,11 +68,11 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'timeSpent': 0,
             'outlookId': email['id'],
             'category': None,
-            'importanceScore': None
+            'importanceScore': 0
         })
 
-        # async categorization
-        categorizeIndividualEmail(email)
+        thread = threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id,))
+        thread.start()
 
         emailObj = {
             'subject': email['subject'],

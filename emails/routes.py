@@ -4,6 +4,7 @@ import requests
 from universal.getUser import getUser
 from bs4 import BeautifulSoup
 from emails.process import processEmail
+import universal.logic as logic
 import openai
 
 db = client.fyp
@@ -39,6 +40,8 @@ def getEmailsPerPage():
 
     # get the _id field from recipient
     userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+    if pageNum <= 1:    # likely a recent login so register the user in our stateless AI service
+        logic.regUser(str(userId))
 
     # get the first n emails and process them
     endpoint = f"https://graph.microsoft.com/v1.0/me/messages?&$filter=receivedDateTime ge 1900-01-01T00:00:00Z and (not (sender/emailAddress/address eq '{userEmail}'))&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$orderby=receivedDateTime desc&$skip={(pageNum-1)*50}&$count=true"
