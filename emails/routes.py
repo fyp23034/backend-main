@@ -97,16 +97,27 @@ def getByCategory():
         pageNum = request.args.get('page')
         pageNum = int(pageNum)
         category = request.args.get('category')
+        category = int(category)
 
         userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
 
-        if category == "":
-            category = None
+        if category == 1:
+            lowerBound = 0
+            upperBound = 3
+        elif category == 2:
+            lowerBound = 4
+            upperBound = 7
+        elif category == 3:
+            lowerBound = 8
+            upperBound = 10
+
         pageSize = 50
         # pageSize = 10   # for testing purposes
         skipAmount = (pageNum-1)*pageSize
-        emails = colEmails.find({'category': category, 'userId': userId}).sort('receivedTime', -1).skip(skipAmount).limit(pageSize)
+        emails = colEmails.find({'category': {'$gte': lowerBound, '$lte': upperBound}, 
+                                 'userId': userId}).sort('receivedTime', -1).skip(skipAmount).limit(pageSize)
         emailsPerPage = []
+        emailCount = colEmails.count_documents({'category': {'$gte': lowerBound, '$lte': upperBound}, 'userId': userId})
         for email in emails:
             emailsPerPage.append({
                 'subject': email['subject'],
@@ -115,7 +126,7 @@ def getByCategory():
                 'id': email['outlookId'],
                 'sender': email['sender']
             })
-        return {'error': False, 'emails': emailsPerPage, 'totalEmails': len(emailsPerPage)}
+        return {'error': False, 'emails': emailsPerPage, 'totalEmails': emailCount}
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Invalid cateogyr or database error'}

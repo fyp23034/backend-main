@@ -170,10 +170,7 @@ def emailCategory(emailID):
 
     otherEmailsScore = []
     for Email in Emails:
-        if (Email.real) and (Email.emailID != emailID):
-            print()
-            Email.printInfo()
-            print()
+        if (Email.real) and (Email.emailID != emailID) and (int(Email.importanceScore) != -1):
             otherEmailsScore.append(float(Email.importanceScore))
 
     otherEmailsScore.append(score)
@@ -329,20 +326,15 @@ def generateICS(emailID):
     body = str(emailIDToEmailObject(emailID).body)
     sender_name = str(emailIDToEmailObject(emailID).senderName)
 
-    print(subject)
-    print(time_received)
-    print(body)
-    print(sender_name)
-    print()
-    print("______________")
-    print()
-    print("Topic:")
-    print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput only a topic for this event."))
-    print("start:")
+
+
+    print("\n\nTopic:")
+    print(askGPT("Here is an email I just received with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput a topic for the event mentioned without mentioning the location, date and time. Only output the topic itself, without including any other words like \"Topic:\"."))
+    print("\n\nStart:")
     print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOnly Give me the event's starting time with exact date and time (format \"YYYY-MM-DD-HH-MM\") for it."))
-    print("duration:")
-    print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput only the duration for this event in number of hours with a single integer without any words.(you can estimate if it's not provided)"))
-    print("location:")
+    print("\n\nDuration:")
+    print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOnly Give me the event's ending time with exact date and time (format \"YYYY-MM-DD-HH-MM\") for it."))
+    print("\n\nLocation:")
     print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput only the location for this event."))
     # summary = 'My Special Event'
     # start_datetime = datetime(2024, 3, 14, 18, 0, 0, tzinfo=pytz.utc)
@@ -351,8 +343,5 @@ def generateICS(emailID):
     # details = 'This is a detailed description of my special event. Join us for fun and learning!'
     # create_ics_file(summary, start_datetime, end_datetime, location, details, 'my_special_event.ics')
 
-
-regUser("654279c91f4bb5264eb7303d")
-#emailCategory("65f45e397ce16919ad7da335")
-emailCategory("65f45e357ce16919ad7da32b")
-#generateICS("65427c82d747ca686fa7382f")
+def health():
+    return "OK"

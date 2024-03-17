@@ -37,8 +37,10 @@ def updatePref():
         userId = currUser['_id']
         currPref = colPref.update_one({'userId': userId}, {'$set': {'prefList': prefList, 'whitelist': whitelist}}, upsert=True)
         for pref in prefList:
+            logic.regUser(str(userId))
             logic.userNLR(pref)
         for wl in whitelist:
+            logic.regUser(str(userId))
             logic.addToWhiteList(wl)
         return {'error': False}
     except Exception as e:

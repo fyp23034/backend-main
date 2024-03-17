@@ -3,6 +3,7 @@ import checkdmarc
 
 def check_spf_dmarc(senderAddress):
     domain = checkdmarc.get_base_domain(senderAddress)  # get the base email server domain from the sender address
+    failed = 0
 
     # source: https://www.thierolf.org/blog/2021/small-python-script-to-quick-test-dmarc-dkim-and-spf-records/
     try:
@@ -12,7 +13,7 @@ def check_spf_dmarc(senderAddress):
                 break
     except:
         print("[FAIL] DMARC record not found.")
-        return False
+        failed += 1
 
     try:
         test_spf = dns.resolver.resolve(domain , 'TXT')
@@ -21,6 +22,13 @@ def check_spf_dmarc(senderAddress):
                 break
     except:
         print ("[FAIL] SPF record not found.")
-        return False
+        failed += 1
 
-    return True
+    weighDown = 0
+    if failed == 0:
+        return [True, -1]
+    if failed == 1:
+        weighDown = 3
+    else:
+        weighDown = 0
+    return [False, weighDown]

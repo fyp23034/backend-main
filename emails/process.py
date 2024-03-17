@@ -3,6 +3,7 @@ from emails import emails, client
 import requests
 from universal.getUser import getUser
 import universal.logic as logic
+from universal.check_spf_dmarc import check_spf_dmarc
 import datetime
 import threading
 
@@ -11,13 +12,19 @@ colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
 
-def categorizeIndividualEmail(emailId):
+def categorizeIndividualEmail(emailId, sender, userId):
 
-    # TODO: Include SPF, DKIM, DMARC, and other email security checks
+    # TODO: Include SPF, DKIM, DMARC, and other email security checks [DONE]
+    
+    dontAdjust, weight = check_spf_dmarc(sender['address'])
 
-    print(str(emailId))
+    print(str(userId))
+    logic.regUser(str(userId))
     aiScore = logic.emailCategory(str(emailId))
-    colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
+    if not dontAdjust:
+        colEmails.update_one({'_id': emailId}, {'$set': {'category': (aiScore + weight) // 2}}, upsert=True)
+    else:
+        colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
     return
 
 def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by reference
@@ -71,8 +78,11 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'importanceScore': -1
         })
 
-        thread = threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id,))
+        thread = threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id, 
+                                                                          email['sender']['emailAddress'],
+                                                                          userId,))
         thread.start()
+        # categorizeIndividualEmail(inserted.inserted_id, email['sender']['emailAddress'])
 
         emailObj = {
             'subject': email['subject'],
@@ -84,4 +94,5 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
         emailsPerPage.append(emailObj)
         return [True, 'Email added to database']
     except Exception as e:
-        return [False, e]
+        print(e)
+        return [False, 'Something went wrong']
