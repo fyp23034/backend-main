@@ -2,6 +2,7 @@ from flask import Flask, Blueprint, request
 from pref import pref, client
 import requests
 from universal.getUser import getUser
+import universal.logic as logic
 from pref.obtainPreferences import obtainPreferences
 
 db = client.fyp
@@ -35,6 +36,12 @@ def updatePref():
         currUser = colUsers.find_one({'email': userEmail})
         userId = currUser['_id']
         currPref = colPref.update_one({'userId': userId}, {'$set': {'prefList': prefList, 'whitelist': whitelist}}, upsert=True)
+        for pref in prefList:
+            logic.regUser(str(userId))
+            logic.userNLR(pref)
+        for wl in whitelist:
+            logic.regUser(str(userId))
+            logic.addToWhiteList(wl)
         return {'error': False}
     except Exception as e:
         return {'error': True, 'message': e}

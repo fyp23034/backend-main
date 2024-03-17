@@ -2,20 +2,34 @@ from flask import Flask, Blueprint, request
 from emails import emails, client
 import requests
 from universal.getUser import getUser
+import universal.logic as logic
+from universal.check_spf_dmarc import check_spf_dmarc
 import datetime
+import threading
 
 db = client.fyp
 colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
 
-def categorizeIndividualEmail(email):
-    # should be async
-    return "CALL JUSTIN'S API"
+def categorizeIndividualEmail(emailId, sender, userId):
+
+    # TODO: Include SPF, DKIM, DMARC, and other email security checks [DONE]
+    
+    dontAdjust, weight = check_spf_dmarc(sender['address'])
+
+    print(str(userId))
+    logic.regUser(str(userId))
+    aiScore = logic.emailCategory(str(emailId))
+    if not dontAdjust:
+        colEmails.update_one({'_id': emailId}, {'$set': {'category': (aiScore + weight) // 2}}, upsert=True)
+    else:
+        colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
+    return
 
 def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by reference
 
-    # TODO: Categorize email, add async support for database insertions
+    # TODO: Implement read-through, write-back db cache
 
     try:
         emailInDb = colEmails.find_one({'outlookId': email['id']})
@@ -61,11 +75,14 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'timeSpent': 0,
             'outlookId': email['id'],
             'category': None,
-            'importanceScore': None
+            'importanceScore': -1
         })
 
-        # async categorization
-        categorizeIndividualEmail(email)
+        thread = threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id, 
+                                                                          email['sender']['emailAddress'],
+                                                                          userId,))
+        thread.start()
+        # categorizeIndividualEmail(inserted.inserted_id, email['sender']['emailAddress'])
 
         emailObj = {
             'subject': email['subject'],
@@ -77,4 +94,5 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
         emailsPerPage.append(emailObj)
         return [True, 'Email added to database']
     except Exception as e:
-        return [False, e]
+        print(e)
+        return [False, 'Something went wrong']

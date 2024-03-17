@@ -11,6 +11,7 @@ app.register_blueprint(emails, url_prefix='/emails')
 app.register_blueprint(metrics, url_prefix='/metrics')
 app.register_blueprint(pref, url_prefix='/pref')
 
+# Source: https://fetch.spec.whatwg.org/
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
