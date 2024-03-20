@@ -75,12 +75,22 @@ def getEmail(id):
         response = requests.get(endpoint,headers=headers).json()
         if 'error' in response:
             return {'error': True, 'message': response['error']['message']}, 500
+        aiScore = colEmails.find_one({'outlookId': id})['category']
+        score = 0
+        # if category is from 0-3, score = 1. if category is from 4-7, score = 2. if category is from 8-10, score = 3
+        if aiScore in range(0, 4):
+            score = 1
+        elif aiScore in range(4, 8):
+            score = 2
+        elif aiScore in range(8, 11):
+            score = 3
         emailObj = {
             'subject': response['subject'],
             'body': response['body']['content'],
             'cc': response['ccRecipients'],
             'bcc': response['bccRecipients'],
-            'sender': response['sender']['emailAddress']
+            'sender': response['sender']['emailAddress'],
+            'category': score
         }
         return {'error': False, 'email': emailObj}
     except Exception as e:

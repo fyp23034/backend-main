@@ -25,7 +25,7 @@ def categorizeIndividualEmail(emailId, sender, userId):
         colEmails.update_one({'_id': emailId}, {'$set': {'category': (aiScore + weight) // 2}}, upsert=True)
     else:
         colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
-    return aiScore
+    return
 
 def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by reference
 
@@ -36,14 +36,6 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
 
         # email already in database and categorized
         if emailInDb:
-            score = 0
-            # if category is from 0-3, score = 1. if category is from 4-7, score = 2. if category is from 8-10, score = 3
-            if emailInDb['category'] in range(0, 4):
-                score = 1
-            elif emailInDb['category'] in range(4, 8):
-                score = 2
-            elif emailInDb['category'] in range(8, 11):
-                score = 3
 
             emailsPerPage.append({
                 'subject': emailInDb['subject'],
@@ -51,7 +43,6 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
                 'bodyPreview': emailInDb['bodyPreview'],
                 'id': emailInDb['outlookId'],
                 'sender': emailInDb['sender'],
-                'category': score
             })
             return [True, 'Email already exists']
         
@@ -88,14 +79,7 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'importanceScore': -1
         })
 
-        score = 0
-        aiScore = categorizeIndividualEmail(inserted.inserted_id, email['sender']['emailAddress'], userId)
-        if aiScore in range(0, 4):
-                score = 1
-        elif aiScore in range(4, 8):
-            score = 2
-        elif aiScore in range(8, 11):
-            score = 3
+        threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id, email['sender']['emailAddress'], userId,)).start()
 
         emailObj = {
             'subject': email['subject'],
@@ -103,7 +87,6 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
             'bodyPreview': email['bodyPreview'],
             'sender': email['sender']['emailAddress'],
             'id': email['id'],
-            'category': score
         }
         emailsPerPage.append(emailObj)
         return [True, 'Email added to database']
