@@ -137,7 +137,7 @@ def askGPT(question):
             prompt=question,
             max_tokens=1000
         )
-        return response.choices[0].text.strip()
+        return str(response.choices[0].text.strip())
     except Exception as e:
         return str(e)
 
@@ -153,6 +153,7 @@ def emailIDToEmailObject(emailID):
 
 #_______________________________________________________________________________________________________________________
 
+#used whenever new emails arrived
 def regUser(userID):
     global currentUserID
     currentUserID = userID
@@ -225,123 +226,81 @@ def userNLR(req):
     direction = int(direction)
     addNewRecordsToFakeEmails(ObjectId(currentUserID), words, "", words, "", "", [], [], 1, direction)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#output True/False. True: .ics generated succuessfully at the same folder with name 'emailID'.ics. False: .ics generation failed
+#generateICS("65427c82d747ca686fa7382f")
 def generateICS(emailID):
-    subject = str(emailIDToEmailObject(emailID).subject)
-    time_received = str(emailIDToEmailObject(emailID).timeReceived)
-    body = str(emailIDToEmailObject(emailID).body)
-    sender_name = str(emailIDToEmailObject(emailID).senderName)
+    try:
+        subject = str(emailIDToEmailObject(emailID).subject)
+        time_received = str(emailIDToEmailObject(emailID).timeReceived)
+        body = str(emailIDToEmailObject(emailID).body)
+        sender_name = str(emailIDToEmailObject(emailID).senderName)
+        topic = askGPT(
+            "Here is an email I just received with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(
+                datetime.fromtimestamp(int(time_received)).strftime(
+                    '%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput a topic for the event mentioned without mentioning the location, date and time. Only output the topic itself, without including any other words like \"Topic:\".")
+        if (topic[0] == '"') and (topic[-1] == '"'):
+            topic = topic[1:-1]
+        st_str = askGPT(
+            "Answer my question with this format \"YYYY-MM-DD-HH-MM\"(do not use \':\') without any other words.\n Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(
+                datetime.fromtimestamp(int(time_received)).strftime(
+                    '%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nGive me the event's starting time with exact date and time.")
+        start_datetime = datetime.strptime(st_str, "%Y-%m-%d-%H-%M")
+        et_str = askGPT(
+            "Answer my question with this format \"YYYY-MM-DD-HH-MM\"(do not use \':\') without any other words.\n Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(
+                datetime.fromtimestamp(int(time_received)).strftime(
+                    '%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nGive me the event's ending time with exact date and time.")
+        end_datetime = datetime.strptime(et_str, "%Y-%m-%d-%H-%M")
+        location = askGPT(
+            "Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(
+                datetime.fromtimestamp(int(time_received)).strftime(
+                    '%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput only the location for this event without any other words.")
+        location = location.replace("Location: ", "")
+        location = location.replace("location: ", "")
+        location = location.replace("Location:", "")
+        location = location.replace("location:", "")
+        create_ics_file(topic, start_datetime, end_datetime, location, "", emailID + '.ics')
+        return True
+    except Exception as e:
+        return False
 
+#output lists of emailIDs
+def smartSearch(request):
+    relatedWords = askGPT("I am developing for an email smart search function and the user requests: \"" + request + "\". Please give me at least 20 vocabularies that might appear in the target emails.")
+    relatedWords = relatedWords.replace(". ", "")
+    for i in range(10):
+        relatedWords = relatedWords.replace(str(i), "")
 
+    relatedEmails = []
+    for Email in Emails:
+        if (Email.real) and (calculate_similarity(Email.subject,relatedWords) > 0):
+            relatedEmails.append(Email.emailID)
+    return relatedEmails
 
-    print("\n\nTopic:")
-    print(askGPT("Here is an email I just received with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput a topic for the event mentioned without mentioning the location, date and time. Only output the topic itself, without including any other words like \"Topic:\"."))
-    print("\n\nStart:")
-    print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOnly Give me the event's starting time with exact date and time (format \"YYYY-MM-DD-HH-MM\") for it."))
-    print("\n\nDuration:")
-    print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOnly Give me the event's ending time with exact date and time (format \"YYYY-MM-DD-HH-MM\") for it."))
-    print("\n\nLocation:")
-    print(askGPT("Here is an email with information below.\nSubject: \"" + subject + "\"\nTime Received: \"" + str(datetime.fromtimestamp(int(time_received)).strftime('%c')) + "\"\nBody: \"" + body + "\"\nSender name: \"" + sender_name + "\"\n\nOutput only the location for this event."))
-    # summary = 'My Special Event'
-    # start_datetime = datetime(2024, 3, 14, 18, 0, 0, tzinfo=pytz.utc)
-    # end_datetime = datetime(2024, 3, 14, 20, 0, 0, tzinfo=pytz.utc)
-    # location = '123 Event Location St, City, Country'
-    # details = 'This is a detailed description of my special event. Join us for fun and learning!'
-    # create_ics_file(summary, start_datetime, end_datetime, location, details, 'my_special_event.ics')
+#suggestReply("65427c82d747ca686fa7382f", "accept the interview")
+#return a string
+def suggestReply(emailID, command):
+    emailContent = emailIDToEmailObject(emailID).body
+    reply = askGPT("I am developing an email reply suggestion function, the user wants to reply the below email with the request \"" + command + "\". The to be replied email's content is attached below. Generate a reply for the below email.\n\nEmail Received:\n" + emailContent)
+    dearpos = reply.find("Dear")
+    hipos = reply.find("Hi")
+    if (dearpos >= 0) and (hipos >= 0):
+        pos = min(dearpos,hipos)
+    elif (dearpos >= 0) and (hipos < 0):
+        pos = dearpos
+    elif (dearpos < 0) and (hipos >= 0):
+        pos = hipos
+    else:
+        pos = -1
+    if pos >= 0:
+        reply = reply[pos:]
+    return reply
 
-def health():
-    return "OK"
+#dailySummary(1710647345)
+def dailySummary(fromTime):
+    gptRequest = "Please make a summary from the below emails in a third person perspective like \"You just received an email about...\". Below are the list of emails to be summarized.\n----------------------------------------------\n"
+    for Email in Emails:
+        if (Email.category != None):
+            if (Email.real):
+                if (Email.timeReceived >= fromTime) and (Email.category <= 4):
+                    gptRequest += Email.body + "\n----------------------------------------------\n"
+    return askGPT(gptRequest)
