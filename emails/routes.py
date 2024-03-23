@@ -149,7 +149,6 @@ def getByCategory():
 def test():
     return {'error': False}
 
-# update 23/8: id refers to email id now
 @emails.route('/changeCategory/<string:id>', methods=['POST'])
 def changeCategory(id):
     try:
