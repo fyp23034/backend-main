@@ -3,9 +3,10 @@ from emails import emails, client
 import requests
 from universal.getUser import getUser
 from bs4 import BeautifulSoup
-from emails.process import processEmail
+from emails.process import processEmail, updateClicks
 import universal.logic as logic
 import openai
+import threading
 
 db = client.fyp
 colEmails = db.emails
@@ -75,7 +76,9 @@ def getEmail(id):
         response = requests.get(endpoint,headers=headers).json()
         if 'error' in response:
             return {'error': True, 'message': response['error']['message']}, 500
-        aiScore = colEmails.find_one({'outlookId': id})['category']
+        currEmail = colEmails.find_one({'outlookId': id})
+        aiScore = currEmail['category']
+        threading.Thread(target=updateClicks, args=(id, currEmail)).start() # update clicks using multithreading
         score = 0
         # if category is from 0-3, score = 1. if category is from 4-7, score = 2. if category is from 8-10, score = 3
         if aiScore in range(0, 4):
@@ -146,12 +149,20 @@ def getByCategory():
 def test():
     return {'error': False}
 
+# update 23/8: id refers to email id now
 @emails.route('/changeCategory/<string:id>', methods=['POST'])
 def changeCategory(id):
     try:
         outlookId = id
         category = request.json['newCategory']
-        colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': category}})
+        category = int(category)
+        if category == 1:
+            setCat = 2
+        elif category == 2:
+            setCat = 5
+        elif category == 3:
+            setCat = 9
+        colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': setCat}})
         return {'error': False}
     except Exception as e:
         print(e)
