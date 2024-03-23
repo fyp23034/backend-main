@@ -93,3 +93,17 @@ def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by refere
     except Exception as e:
         print(e)
         return [False, 'Something went wrong']
+    
+def updateClicks(outlookId, currEmail):
+    currMetrics = colMetrics.find_one({'outlookId': outlookId})
+    if not currMetrics:
+        colMetrics.insert_one({
+            'emailId': currEmail['_id'],
+            'timesClicked': 1,
+            'timeSpent': 0,
+            'outlookId': outlookId,
+            'aiScore': None
+        })
+    else:
+        colMetrics.update_one({'outlookId': outlookId}, {'$inc': {'timesClicked': 1}})
+    return
