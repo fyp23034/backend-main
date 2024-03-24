@@ -191,3 +191,81 @@ This endpoint retrieves the summary for a specific email identified by its uniqu
 - `summary` (string): The summary of the email.
 
 If `error` is False, `message` will be returned rather than `summary`
+
+## http://127.0.0.1:5000/emails/smartSearch
+
+Smart search endpoint for emails
+
+### Request
+
+#### Request Details
+
+- Method: **POST**
+
+#### Request Headers
+
+- Content-Type: application/json
+- Access-Token: [Obtained from MSAL]
+
+#### Request Body
+
+- `searchString` (string, required): The search string to filter emails, eg: "Are there any emails related to interviews?", "Show me emails related to school"
+    
+### Response
+
+The response will be a JSON object with the following properties:
+
+- `emails` (array): An array of email objects containing the following properties:
+    - `bodyPreview` (string): A preview of the email body.
+    - `id` (string): The unique identifier of the email.
+    - `sender` (object): An object containing the sender's information with the following properties:
+        - `address` (string): The email address of the sender.
+        - `name` (string): The name of the sender.
+    - `subject` (string): The subject of the email.
+    - `time` (number): The timestamp of the email.
+- `error` (boolean): Indicates if there was an error in the request.
+- `totalEmails` (number): The total number of emails returned in the response.
+    
+## http://127.0.0.1:5000/emails/generateICS/{id}
+
+Generate an ICS file for a given email, if successful the ICS will be downloaded in the browser.
+
+### Request
+
+#### Request Details
+
+- Method: **GET**
+
+#### Request Headers
+
+- Access-Token: [Optional for this route]
+
+### Response
+
+- If successful, ICS file will be downloaded in the browser
+- If failed, response body will be as below...
+    
+#### Response Body in Event of Failure
+
+- `error` (boolean): Indicates if an error occurred.
+- `message` (string): The failure message.
+
+## http://127.0.0.1:5000/emails/dailySummary
+
+### Request
+
+#### Request Details
+
+- Method: **GET**
+
+#### Request Headers
+
+- Content-Type: application/json
+- Access-Token: [Obtained from MSAL]
+
+### Response
+    
+#### Response Body
+
+- `error` (boolean): Indicates if an error occurred.
+- `summary` (string): Daily summary of the 24 hours before time of calling the API.

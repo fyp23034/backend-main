@@ -1,10 +1,12 @@
-from flask import Flask, Blueprint, request
+from flask import Flask, Blueprint, request, send_file
 from emails import emails, client
 import requests
 from universal.getUser import getUser
+from bson import ObjectId
 from bs4 import BeautifulSoup
 from emails.process import processEmail, updateClicks
 import universal.logic as logic
+import time
 import openai
 import threading
 
@@ -166,6 +168,70 @@ def changeCategory(id):
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Invalid email ID or database error'}
+
+@emails.route('/dailySummary', methods=['GET'])
+def getDailySummary():
+    # get the epoch time 24 hours ago
+    try:
+        accessToken = request.headers.get('Access-Token')
+        userResponse = getUser(accessToken)
+        if 'error' in userResponse:
+            return {'error': True, 'message': userResponse['message']}
+        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+        logic.regUser(str(userId))
+        epochTime = int(time.time())
+        epochTime -= 86400
+        summary = logic.dailySummary(epochTime)
+        return {'error': False, 'summary': summary}
+    except Exception as e:
+        print(e)
+        return {'error': True, 'message': 'Something went wrong with the AI summarise function'}
+
+@emails.route('/generateICS/<string:id>', methods=['GET'])
+def generateICS(id):
+    try:
+        email = colEmails.find_one({'outlookId': id})
+        emailId = str(email['_id'])
+        userId = str(email['userId'])
+        logic.regUser(userId)
+        success = logic.generateICS(str(emailId))
+        if success:
+            ics_filename = f'{emailId}.ics'
+            return send_file(ics_filename, as_attachment=True)
+        return {'error': True, 'message': 'Something went wrong with the ICS generation function'}
+    except Exception as e:
+        print(e)
+        return {'error': True, 'message': 'Something went wrong with the ICS generation function'}
+
+# omit for now, will implement in the future
+@emails.route('/smartSearch', methods=['POST'])
+def smartSearch():
+    try:
+        accessToken = request.headers.get('Access-Token')
+        searchString = request.json['searchString']
+        userResponse = getUser(accessToken)
+        if 'error' in userResponse:
+            return {'error': True, 'message': userResponse['message']}
+        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+        logic.regUser(str(userId))
+        emailIdList = logic.smartSearch(searchString)
+        # change emailIdList to ObjectId
+        emailIdList = [ObjectId(emailId) for emailId in emailIdList]
+        emailsInDb = colEmails.find({'_id': {'$in': emailIdList}})
+
+        emailReturnList = []
+        for email in emailsInDb:
+            emailReturnList.append({
+                'subject': email['subject'],
+                'time': email['receivedTime'],
+                'bodyPreview': email['bodyPreview'],
+                'id': email['outlookId'],
+                'sender': email['sender']
+            })
+        return {'error': False, 'emails': emailReturnList, 'totalEmails': len(emailReturnList)}
+    except Exception as e:
+        print(e)
+        return {'error': True, 'message': 'Something went wrong with the smart search function'}
 
 @emails.route('/getSummary/<string:id>', methods=['GET'])
 def summarise(id):
