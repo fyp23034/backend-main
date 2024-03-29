@@ -51,21 +51,67 @@ def getEmailsPerPage():
     response = requests.get(endpoint,headers=headers).json()
     totalEmails = response['@odata.count']
     emailsPerPage = []
+    cnt = 0
+    foundInDb = False
     for email in response['value']:
         processRes = processEmail(email, userId, emailsPerPage)
         if not processRes[0]:
             return {'error': True, 'message': processRes[1]}
-
-    # get the next 40 emails and process them
-    for _ in range(4):
-        if '@odata.nextLink' not in response:
+        elif processRes[1] == 'Email already exists':
+            # email already found in the database, so we just need to get the next 10 - cnt emails
+            nextFew = colEmails.find({'userId': userId}).sort('receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
+            foundInDb = True
             break
-        endpoint = response['@odata.nextLink']
-        response = requests.get(endpoint,headers=headers).json()
-        for email in response['value']:
-            processRes = processEmail(email, userId, emailsPerPage)
-            if not processRes[0]:
-                return {'error': True, 'message': processRes[1]}
+        cnt += 1
+    
+    if foundInDb:
+        currLen = len(emailsPerPage)
+        for email in nextFew:
+            if currLen >= 50:
+                break
+            emailsPerPage.append({
+                'subject': email['subject'],
+                'time': email['receivedTime'],
+                'bodyPreview': email['bodyPreview'],
+                'id': email['outlookId'],
+                'sender': email['sender']
+            })
+            currLen += 1
+
+    if not foundInDb:
+        # get the next 40 emails and process them
+        cnt = 10
+        foundInDbSecondRound = False
+        for _ in range(4):
+            if '@odata.nextLink' not in response:
+                break
+            if foundInDbSecondRound:
+                break
+            endpoint = response['@odata.nextLink']
+            response = requests.get(endpoint,headers=headers).json()
+            for email in response['value']:
+                processRes = processEmail(email, userId, emailsPerPage)
+                if not processRes[0]:
+                    return {'error': True, 'message': processRes[1]}
+                elif processRes[1] == 'Email already exists':
+                    nextFew = colEmails.find({'userId': userId}).sort('receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
+                    foundInDbSecondRound = True
+                    break
+                cnt += 1
+        
+        if foundInDbSecondRound:
+            currLen = len(emailsPerPage)
+            for email in nextFew:
+                if currLen >= 50:
+                    break
+                emailsPerPage.append({
+                    'subject': email['subject'],
+                    'time': email['receivedTime'],
+                    'bodyPreview': email['bodyPreview'],
+                    'id': email['outlookId'],
+                    'sender': email['sender']
+                })
+                currLen += 1
 
     return {'error': False, 'emails': emailsPerPage, 'totalEmails': totalEmails}
 
