@@ -54,7 +54,7 @@ def getEmailsPerPage():
     cnt = 0
     foundInDb = False
     for email in response['value']:
-        processRes = processEmail(email, userId, emailsPerPage)
+        processRes = processEmail(email, userId, emailsPerPage, cacheEnabled=False) # change to True for caching
         if not processRes[0]:
             return {'error': True, 'message': processRes[1]}
         elif processRes[1] == 'Email already exists':
