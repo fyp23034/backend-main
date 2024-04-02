@@ -1,3 +1,4 @@
+import datetime
 from flask import Flask, Blueprint, request, send_file
 from emails import emails, client
 import requests
@@ -228,6 +229,8 @@ def getDailySummary():
         epochTime = int(time.time())
         epochTime -= 86400
         summary = logic.dailySummary(epochTime)
+        # split the summary by \n\n
+        summary = summary.split('\n\n')
         return {'error': False, 'summary': summary}
     except Exception as e:
         print(e)
@@ -258,21 +261,37 @@ def smartSearch():
         userResponse = getUser(accessToken)
         if 'error' in userResponse:
             return {'error': True, 'message': userResponse['message']}
-        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
-        logic.regUser(str(userId))
-        emailIdList = logic.smartSearch(searchString)
-        # change emailIdList to ObjectId
-        emailIdList = [ObjectId(emailId) for emailId in emailIdList]
-        emailsInDb = colEmails.find({'_id': {'$in': emailIdList}})
 
+#         relatedWords = logic.askGPT(f"""I am developing for an email smart search function and the user requests: '{searchString}'. Please extract the main search keywords from this user request. 
+
+# Examples: 
+# 1. 'any emails related to interviews?' should give keywords like 'interview', 'interviews', 'application', 'job posting'. 
+# 2. 'anything related to presentations?' should give keywords like 'presentation', 'project', 'meeting'.
+
+# Responses should be in the form:
+# 1. keyword1\n2. keyword2\n3. keyword3""")
+        # relatedWords = relatedWords.replace(". ", "")
+        # for i in range(10):
+        #     relatedWords = relatedWords.replace(str(i), "")
+        # relatedWords = relatedWords.split("\n")
+        # relatedWords = relatedWords[:5]
+        # join the related words into a string separated by OR
+        # searchStr = f"{relatedWords[0]}"
+        # for word in range(1, len(relatedWords)):
+        #     searchStr += " OR " + relatedWords[word]
+        # print(searchStr)
+
+        endpoint = f'https://graph.microsoft.com/v1.0/me/messages?$search="{searchString}"&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$count=true'
+        headers = {"Authorization": f"Bearer {accessToken}"}
+        response = requests.get(endpoint,headers=headers).json()   
         emailReturnList = []
-        for email in emailsInDb:
+        for email in response['value']:
             emailReturnList.append({
                 'subject': email['subject'],
-                'time': email['receivedTime'],
+                'time': int(datetime.datetime.strptime(email['receivedDateTime'], '%Y-%m-%dT%H:%M:%SZ').timestamp()),
                 'bodyPreview': email['bodyPreview'],
-                'id': email['outlookId'],
-                'sender': email['sender']
+                'id': email['id'],
+                'sender': email['sender']['emailAddress']
             })
         return {'error': False, 'emails': emailReturnList, 'totalEmails': len(emailReturnList)}
     except Exception as e:
