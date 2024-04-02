@@ -136,7 +136,8 @@ def askGPT(question):
         response = openai.Completion.create(
             engine="gpt-3.5-turbo-instruct",
             prompt=question,
-            max_tokens=1000
+            max_tokens=1000,
+            temperature=0.1
         )
         return str(response.choices[0].text.strip())
     except Exception as e:
