@@ -1,5 +1,8 @@
 from flask import Flask, Blueprint, request
 from emails import emails, client
+import redis
+import json
+from bson import ObjectId
 import requests
 from universal.getUser import getUser
 import universal.logic as logic
@@ -12,13 +15,32 @@ colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
 
-def categorizeIndividualEmail(emailId, sender, userId):
+def checkRedisCache(outlookId):
+    cache_client = redis.Redis(host='localhost', port=6379, db=0)
+    query = {'outlookId': outlookId}
+    get_response = cache_client.get(json.dumps(query))
+    if get_response:    # cache hit
+        cachedJson = json.loads(get_response)
+        cachedJson['_id'] = ObjectId(cachedJson['_id'])
+        cachedJson['userId'] = ObjectId(cachedJson['userId'])
+        return cachedJson
+    else:   # cache miss
+        dbQueryRes = colEmails.find_one({'outlookId': outlookId})
+        if not dbQueryRes:
+            return None
+        resCopy = dbQueryRes.copy()
+        resCopy['_id'] = str(dbQueryRes['_id'])
+        resCopy['userId'] = str(dbQueryRes['userId'])
+        cache_client.set(json.dumps(query), json.dumps(resCopy), ex=21600)
+        return dbQueryRes
 
-    # TODO: Include SPF, DKIM, DMARC, and other email security checks [DONE]
+def categorizeIndividualEmail(emailId, sender, userId, spfDmarcCheck=False):
     
-    dontAdjust, weight = check_spf_dmarc(sender['address'])
+    if spfDmarcCheck:
+        dontAdjust, weight = check_spf_dmarc(sender['address'])
+    else:
+        dontAdjust, weight = True, 0
 
-    print(str(userId))
     logic.regUser(str(userId))
     aiScore = logic.emailCategory(str(emailId))
     if not dontAdjust:
@@ -27,12 +49,15 @@ def categorizeIndividualEmail(emailId, sender, userId):
         colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
     return
 
-def processEmail(email, userId, emailsPerPage): # emailsPerPage passed by reference
+def processEmail(email, userId, emailsPerPage, cacheEnabled=False): # emailsPerPage passed by reference
 
     # TODO: Implement read-through, write-back db cache
 
     try:
-        emailInDb = colEmails.find_one({'outlookId': email['id']})
+        if not cacheEnabled:
+            emailInDb = colEmails.find_one({'outlookId': email['id']})
+        else:
+            emailInDb = checkRedisCache(email['id'])
 
         # email already in database and categorized
         if emailInDb:

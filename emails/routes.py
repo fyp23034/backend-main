@@ -1,3 +1,4 @@
+import datetime
 from flask import Flask, Blueprint, request, send_file
 from emails import emails, client
 import requests
@@ -51,21 +52,67 @@ def getEmailsPerPage():
     response = requests.get(endpoint,headers=headers).json()
     totalEmails = response['@odata.count']
     emailsPerPage = []
+    cnt = 0
+    foundInDb = False
     for email in response['value']:
-        processRes = processEmail(email, userId, emailsPerPage)
+        processRes = processEmail(email, userId, emailsPerPage, cacheEnabled=False) # change to True for caching
         if not processRes[0]:
             return {'error': True, 'message': processRes[1]}
-
-    # get the next 40 emails and process them
-    for _ in range(4):
-        if '@odata.nextLink' not in response:
+        elif processRes[1] == 'Email already exists':
+            # email already found in the database, so we just need to get the next 10 - cnt emails
+            nextFew = colEmails.find({'userId': userId}).sort('receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
+            foundInDb = True
             break
-        endpoint = response['@odata.nextLink']
-        response = requests.get(endpoint,headers=headers).json()
-        for email in response['value']:
-            processRes = processEmail(email, userId, emailsPerPage)
-            if not processRes[0]:
-                return {'error': True, 'message': processRes[1]}
+        cnt += 1
+    
+    if foundInDb:
+        currLen = len(emailsPerPage)
+        for email in nextFew:
+            if currLen >= 50:
+                break
+            emailsPerPage.append({
+                'subject': email['subject'],
+                'time': email['receivedTime'],
+                'bodyPreview': email['bodyPreview'],
+                'id': email['outlookId'],
+                'sender': email['sender']
+            })
+            currLen += 1
+
+    if not foundInDb:
+        # get the next 40 emails and process them
+        cnt = 10
+        foundInDbSecondRound = False
+        for _ in range(4):
+            if '@odata.nextLink' not in response:
+                break
+            if foundInDbSecondRound:
+                break
+            endpoint = response['@odata.nextLink']
+            response = requests.get(endpoint,headers=headers).json()
+            for email in response['value']:
+                processRes = processEmail(email, userId, emailsPerPage)
+                if not processRes[0]:
+                    return {'error': True, 'message': processRes[1]}
+                elif processRes[1] == 'Email already exists':
+                    nextFew = colEmails.find({'userId': userId}).sort('receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
+                    foundInDbSecondRound = True
+                    break
+                cnt += 1
+        
+        if foundInDbSecondRound:
+            currLen = len(emailsPerPage)
+            for email in nextFew:
+                if currLen >= 50:
+                    break
+                emailsPerPage.append({
+                    'subject': email['subject'],
+                    'time': email['receivedTime'],
+                    'bodyPreview': email['bodyPreview'],
+                    'id': email['outlookId'],
+                    'sender': email['sender']
+                })
+                currLen += 1
 
     return {'error': False, 'emails': emailsPerPage, 'totalEmails': totalEmails}
 
@@ -182,6 +229,8 @@ def getDailySummary():
         epochTime = int(time.time())
         epochTime -= 86400
         summary = logic.dailySummary(epochTime)
+        # split the summary by \n\n
+        summary = summary.split('\n\n')
         return {'error': False, 'summary': summary}
     except Exception as e:
         print(e)
@@ -212,21 +261,37 @@ def smartSearch():
         userResponse = getUser(accessToken)
         if 'error' in userResponse:
             return {'error': True, 'message': userResponse['message']}
-        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
-        logic.regUser(str(userId))
-        emailIdList = logic.smartSearch(searchString)
-        # change emailIdList to ObjectId
-        emailIdList = [ObjectId(emailId) for emailId in emailIdList]
-        emailsInDb = colEmails.find({'_id': {'$in': emailIdList}})
 
+#         relatedWords = logic.askGPT(f"""I am developing for an email smart search function and the user requests: '{searchString}'. Please extract the main search keywords from this user request. 
+
+# Examples: 
+# 1. 'any emails related to interviews?' should give keywords like 'interview', 'interviews', 'application', 'job posting'. 
+# 2. 'anything related to presentations?' should give keywords like 'presentation', 'project', 'meeting'.
+
+# Responses should be in the form:
+# 1. keyword1\n2. keyword2\n3. keyword3""")
+        # relatedWords = relatedWords.replace(". ", "")
+        # for i in range(10):
+        #     relatedWords = relatedWords.replace(str(i), "")
+        # relatedWords = relatedWords.split("\n")
+        # relatedWords = relatedWords[:5]
+        # join the related words into a string separated by OR
+        # searchStr = f"{relatedWords[0]}"
+        # for word in range(1, len(relatedWords)):
+        #     searchStr += " OR " + relatedWords[word]
+        # print(searchStr)
+
+        endpoint = f'https://graph.microsoft.com/v1.0/me/messages?$search="{searchString}"&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$count=true'
+        headers = {"Authorization": f"Bearer {accessToken}"}
+        response = requests.get(endpoint,headers=headers).json()   
         emailReturnList = []
-        for email in emailsInDb:
+        for email in response['value']:
             emailReturnList.append({
                 'subject': email['subject'],
-                'time': email['receivedTime'],
+                'time': int(datetime.datetime.strptime(email['receivedDateTime'], '%Y-%m-%dT%H:%M:%SZ').timestamp()),
                 'bodyPreview': email['bodyPreview'],
-                'id': email['outlookId'],
-                'sender': email['sender']
+                'id': email['id'],
+                'sender': email['sender']['emailAddress']
             })
         return {'error': False, 'emails': emailReturnList, 'totalEmails': len(emailReturnList)}
     except Exception as e:

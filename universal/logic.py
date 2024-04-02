@@ -5,6 +5,7 @@ from bson import ObjectId
 from icalendar import Calendar, Event
 from datetime import datetime
 import pytz
+from bs4 import BeautifulSoup
 import openai
 from datetime import datetime
 
@@ -302,5 +303,7 @@ def dailySummary(fromTime):
         if (Email.category != None):
             if (Email.real):
                 if (Email.timeReceived >= fromTime) and (Email.category <= 4):
-                    gptRequest += Email.body + "\n----------------------------------------------\n"
+                    soup = BeautifulSoup(Email.body, 'html.parser')
+                    body = soup.get_text()
+                    gptRequest += body + "\n----------------------------------------------\n"
     return askGPT(gptRequest)
