@@ -192,7 +192,7 @@ This endpoint retrieves the summary for a specific email identified by its uniqu
 
 If `error` is False, `message` will be returned rather than `summary`
 
-## http://127.0.0.1:5000/emails/smartSearch
+## http://127.0.0.1:5000/emails/smartSearch?searchString={searchString}
 
 Smart search endpoint for emails
 
@@ -200,14 +200,14 @@ Smart search endpoint for emails
 
 #### Request Details
 
-- Method: **POST**
+- Method: **GET**
 
 #### Request Headers
 
 - Content-Type: application/json
 - Access-Token: [Obtained from MSAL]
 
-#### Request Body
+#### Request Params
 
 - `searchString` (string, required): The search string to filter emails, eg: "Are there any emails related to interviews?", "Show me emails related to school"
     
@@ -225,7 +225,41 @@ The response will be a JSON object with the following properties:
     - `time` (number): The timestamp of the email.
 - `error` (boolean): Indicates if there was an error in the request.
 - `totalEmails` (number): The total number of emails returned in the response.
+
+## http://127.0.0.1:5000/emails/search?searchString={searchString}
+
+Regular search endpoint for emails
+
+### Request
+
+#### Request Details
+
+- Method: **GET**
+
+#### Request Headers
+
+- Content-Type: application/json
+- Access-Token: [Obtained from MSAL]
+
+#### Request Params
+
+- `searchString` (string, required): The search string to filter emails, eg: "Are there any emails related to interviews?", "Show me emails related to school"
     
+### Response
+
+The response will be a JSON object with the following properties:
+
+- `emails` (array): An array of email objects containing the following properties:
+    - `bodyPreview` (string): A preview of the email body.
+    - `id` (string): The unique identifier of the email.
+    - `sender` (object): An object containing the sender's information with the following properties:
+        - `address` (string): The email address of the sender.
+        - `name` (string): The name of the sender.
+    - `subject` (string): The subject of the email.
+    - `time` (number): The timestamp of the email.
+- `error` (boolean): Indicates if there was an error in the request.
+- `totalEmails` (number): The total number of emails returned in the response.
+
 ## http://127.0.0.1:5000/emails/generateICS/{id}
 
 Generate an ICS file for a given email, if successful the ICS will be downloaded in the browser.
