@@ -5,21 +5,28 @@ from bson import ObjectId
 from icalendar import Calendar, Event
 from datetime import datetime
 import pytz
-from bs4 import BeautifulSoup
 import openai
 from datetime import datetime
+from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
+import spacy
+import warnings
+import re
 
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 client = MongoClient("mongodb+srv://fyp23034:hcQpJzrN@fyp23034.ckoo6oe.mongodb.net/?retryWrites=true&w=majority")
 db = client.fyp
 Emails = []
 currentUserID = ""
 
 class Email:
-    def __init__(self, subject, timeReceived, body, senderName, senderAddress, cc, bcc, timesClicked, timeSpent, to, emailID, userID, importanceScore, category, real):
+    def __init__(self, subject, timeReceived, body, senderName, senderAddress, cc, bcc, timesClicked, timeSpent, to, emailID, userID, importanceScore, category, real, csub, cbody):
         self.subject = subject.replace('\r', ' ').replace('\n', ' ')
         self.timeReceived = timeReceived
         body = body.replace('\r', ' ').replace('\n', ' ')
-        self.body = ' '.join(''.join(char for char in body if 32 <= ord(char) <= 126).split())
+        body = ' '.join(''.join(char for char in body if 32 <= ord(char) <= 126).split())
+        soup = BeautifulSoup(body,"html.parser")
+        body = soup.get_text()
+        self.body = body
         self.senderName = senderName
         self.senderAddress = senderAddress
         self.cc = cc
@@ -32,6 +39,8 @@ class Email:
         self.importanceScore = importanceScore
         self.category = category
         self.real = real
+        self.csub = csub
+        self.cbody = cbody
 
     def printInfo(self):
         print('Subject:', self.subject)
@@ -49,21 +58,29 @@ class Email:
         print('Importance Score:', self.importanceScore)
         print('Category:', self.category)
         print('Real:', self.real)
+        print('Cleaned Subject:', self.csub)
+        print('Cleaned Body:', self.cbody)
 
+def cleanText(text):
+    ban_punc = [',', '.', '?', '!', '(', ')', ';', ':', '@', '#', '$', '%', '&', '-', '/']
+    for punctuation in ban_punc:
+        text = text.replace(punctuation, " ")
+    nlp = spacy.load('en_core_web_sm')
+    doc = nlp(text)
+    filtered_lemmatized_tokens = [token.lemma_ for token in doc if not token.is_stop]
+    text = ' '.join(filtered_lemmatized_tokens).lower()
+    text = re.sub(r'\s+', ' ', text)
+    return text
 
-def calculate_similarity(text1, text2):
+def calculate_similarity_for_sentences(text1, text2):
+    if (text1 == "") and (text2 == ""):
+        return 0
     # Convert the text into TF-IDF vectors
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform([text1, text2])
     # Compute the cosine similarity
     similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
     return similarity[0][0]
-
-def similarity_score(atr, current_email):
-      score = 0
-      for Email in Emails:
-          score += calculate_similarity(getattr(Email,atr),getattr(current_email,atr))*getattr(Email,"timeSpent")
-      return score
 
 def create_ics_file(summary, start_datetime, end_datetime, location, details, file_name):
     cal = Calendar()
@@ -101,12 +118,15 @@ def getMongoDBData():
     ]
     jd = list(db.emails.aggregate(pipeline))
     for i in range(len(jd)):
-        Emails.append(Email(jd[i]['subject'],jd[i]['receivedTime'],jd[i]['bodyPreview'],jd[i]['sender']['name'],jd[i]['sender']['address'],jd[i]['cc'],jd[i]['bcc'],jd[i]['activity'][0]['timesClicked'],jd[i]['activity'][0]['timeSpent'],jd[i]['recipients'],jd[i]['_id'],jd[i]['userId'],jd[i]['activity'][0]['importanceScore'],jd[i]['activity'][0]['category'],True))
+        Emails.append(Email(jd[i]['subject'],jd[i]['receivedTime'],jd[i]['body'],jd[i]['sender']['name'],jd[i]['sender']['address'],jd[i]['cc'],jd[i]['bcc'],jd[i]['activity'][0]['timesClicked'],jd[i]['activity'][0]['timeSpent'],jd[i]['recipients'],jd[i]['_id'],jd[i]['userId'],jd[i]['activity'][0]['importanceScore'],jd[i]['activity'][0]['category'],True,jd[i]['activity'][0]['cSub'],jd[i]['activity'][0]['cBody']))
 
     #add 'fakeEmails' information
     fakeEmails = list(db.fakeEmails.find({"userId": ObjectId(currentUserID)}))
     for i in range(len(fakeEmails)):
-        Emails.append(Email(fakeEmails[i]['subject'],fakeEmails[i]['timeReceived'],fakeEmails[i]['body'],fakeEmails[i]['senderName'],fakeEmails[i]['senderAddress'],fakeEmails[i]['cc'],fakeEmails[i]['bcc'],fakeEmails[i]['timesClicked'],fakeEmails[i]['timeSpent'],None,None,None,None,None,False))
+        Emails.append(Email(fakeEmails[i]['subject'],fakeEmails[i]['timeReceived'],fakeEmails[i]['body'],fakeEmails[i]['senderName'],fakeEmails[i]['senderAddress'],fakeEmails[i]['cc'],fakeEmails[i]['bcc'],fakeEmails[i]['timesClicked'],fakeEmails[i]['timeSpent'],None,None,None,None,None,False,"",""))
+
+
+
 
 #addNewRecordsToFakeEmails("654279c91f4bb5264eb7303d", "subject", "", "body", "", "", [], [], 2, 40)
 def addNewRecordsToFakeEmails(userId, subject, timeReceived, body, senderName, senderAddress, cc, bcc, timesClicked, timeSpent):
@@ -124,11 +144,20 @@ def addNewRecordsToFakeEmails(userId, subject, timeReceived, body, senderName, s
     }
     db.fakeEmails.insert_one(record)
 
-
-
-#print("Importance score: " , importanceScore(Email("I hate FYP","","Job offer letter is attached in this email!","","",[],[],0,0,None,None,None,None,None,None)))
+#print("Importance score: " , importanceScore(Email("I hate FYP","","Job offer letter is attached in this email!","","",[],[],0,0,None,None,None,None,None,None,"","")))
 def importanceScore(ce):
-    return similarity_score("subject",ce)
+    score = 0
+    for Email in Emails:
+        if Email.real:
+            email_sub = Email.csub
+        else:
+            email_sub = Email.subject
+        ce_sub = ce.csub
+        score += calculate_similarity_for_sentences(email_sub, ce_sub) * Email.timeSpent
+
+    score = score/len(Emails)
+
+    return score
 
 def askGPT(question):
 
@@ -160,6 +189,23 @@ def regUser(userID):
     global currentUserID
     currentUserID = userID
     getMongoDBData()
+    collection = db.emailAiMetrics
+    for Email in reversed(Emails):
+        if (Email.real):
+            emailID = Email.emailID
+            if emailID is not None:
+                record = collection.find_one({"emailId": ObjectId(emailID)}, {'cSub': 1, 'cBody': 1})
+                if record:
+                    if record['cSub'] == "":
+                        cleaned = cleanText(Email.subject)
+                        collection.update_one({"emailId": ObjectId(emailID)}, {'$set': {'cSub': cleaned}})
+                        Email.cSub = cleaned
+                    if record['cBody'] == "":
+                        cleaned = cleanText(Email.body)
+                        collection.update_one({"emailId": ObjectId(emailID)}, {'$set': {'cBody': cleaned}})
+                        Email.cBody = cleaned
+                    if (record['cSub'] != "") or (record['cBody'] != ""):
+                        break
 
 def emailSummarization(emailID):
     subject = str(emailIDToEmailObject(emailID).subject)
@@ -267,15 +313,17 @@ def generateICS(emailID):
 
 #output lists of emailIDs
 def smartSearch(request):
-    relatedWords = askGPT("I am developing for an email smart search function and the user requests: \"" + request + "\". Please give me at least 20 vocabularies that might appear in the target emails.")
+    relatedWords = askGPT("A user search emails with the string: \"" + request + "\". Please give me at least 10 vocabularies that might also appear in the target emails.")
     relatedWords = relatedWords.replace(". ", "")
     for i in range(10):
         relatedWords = relatedWords.replace(str(i), "")
+    relatedWords = cleanText(relatedWords + " " + request + " " + request + " " + request)
 
     relatedEmails = []
     for Email in Emails:
-        if (Email.real) and (calculate_similarity(Email.subject,relatedWords) > 0):
-            relatedEmails.append(Email.emailID)
+        if (Email.real):
+            if (calculate_similarity_for_sentences(Email.csub,relatedWords) > 0):
+                relatedEmails.append(Email.emailID)
     return relatedEmails
 
 #suggestReply("65427c82d747ca686fa7382f", "accept the interview")
@@ -304,7 +352,5 @@ def dailySummary(fromTime):
         if (Email.category != None):
             if (Email.real):
                 if (Email.timeReceived >= fromTime) and (Email.category <= 4):
-                    soup = BeautifulSoup(Email.body, 'html.parser')
-                    body = soup.get_text()
-                    gptRequest += body + "\n----------------------------------------------\n"
+                    gptRequest += Email.body + "\n----------------------------------------------\n"
     return askGPT(gptRequest)
