@@ -253,11 +253,11 @@ def generateICS(id):
         return {'error': True, 'message': 'Something went wrong with the ICS generation function'}
 
 # omit for now, will implement in the future
-@emails.route('/smartSearch', methods=['POST'])
-def smartSearch():
+@emails.route('/search', methods=['GET'])
+def search():
     try:
         accessToken = request.headers.get('Access-Token')
-        searchString = request.json['searchString']
+        searchString = request.args.get('searchString')
         userResponse = getUser(accessToken)
         if 'error' in userResponse:
             return {'error': True, 'message': userResponse['message']}
@@ -297,6 +297,39 @@ def smartSearch():
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Something went wrong with the smart search function'}
+
+@emails.route('/smartSearch', methods=['GET'])
+def smartSearch():
+    try:
+        accessToken = request.headers.get('Access-Token')
+        searchString = request.args.get('searchString')
+        userResponse = getUser(accessToken)
+        if 'error' in userResponse:
+            return {'error': True, 'message': userResponse['message']}
+        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+        logic.regUser(str(userId))
+        emailIdList = logic.smartSearch(searchString)
+        # change emailIdList to ObjectId
+        emailIdList = [ObjectId(emailId) for emailId in emailIdList]
+        emailsInDb = colEmails.find({'_id': {'$in': emailIdList}})
+
+        emailReturnList = []
+        for email in emailsInDb:
+            emailReturnList.append({
+                'subject': email['subject'],
+                'time': email['receivedTime'],
+                'bodyPreview': email['bodyPreview'],
+                'id': email['outlookId'],
+                'sender': email['sender']
+            })
+        
+        # sort the emailReturnList by time in descending order
+        emailReturnList = sorted(emailReturnList, key=lambda x: x['time'], reverse=True)
+        return {'error': False, 'emails': emailReturnList, 'totalEmails': len(emailReturnList)}
+    except Exception as e:
+        print(e)
+        return {'error': True, 'message': 'Something went wrong with the smart search function'}
+
 
 @emails.route('/getSummary/<string:id>', methods=['GET'])
 def summarise(id):

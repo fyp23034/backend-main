@@ -7,6 +7,7 @@ Get a `.env` file from [@BrandonTay2001](https://github.com/BrandonTay2001) and 
 ```
 pip install -r requirements.txt
 python app.py
+python -m spacy download en_core_web_sm
 ```
 
 ## API and Database Documentation:
