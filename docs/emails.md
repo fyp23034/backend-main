@@ -77,6 +77,7 @@ In addition, the response will include an "error" field indicating whether there
                     "name": ""
                 },
                 "subject": "",
+                "ics": true/false
             }
         },
         "error": false,
