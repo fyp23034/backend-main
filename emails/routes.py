@@ -15,6 +15,7 @@ db = client.fyp
 colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
+colIcs = db.ics
 
 summarizerPrompt = "You are an email summarization bot. Please summarize emails I provide you."
 
@@ -136,13 +137,19 @@ def getEmail(id):
             score = 2
         elif aiScore in range(8, 11):
             score = 3
+        icsExists = colIcs.find_one({'emailId': ObjectId(currEmail['_id'])})
+        print(currEmail['_id'])
+        ics = False
+        if icsExists:
+            ics = True
         emailObj = {
             'subject': response['subject'],
             'body': response['body']['content'],
             'cc': response['ccRecipients'],
             'bcc': response['bccRecipients'],
             'sender': response['sender']['emailAddress'],
-            'category': score
+            'category': score,
+            'ics': ics
         }
         return {'error': False, 'email': emailObj}
     except Exception as e:
@@ -213,6 +220,8 @@ def changeCategory(id):
             setCat = 5
         elif category == 3:
             setCat = 9
+        elif category == 4:
+            setCat = 11
         colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': setCat}})
         return {'error': False}
     except Exception as e:
@@ -243,19 +252,13 @@ def getDailySummary():
 def generateICS(id):
     try:
         email = colEmails.find_one({'outlookId': id})
-        emailId = str(email['_id'])
-        userId = str(email['userId'])
-        logic.regUser(userId)
-        success = logic.generateICS(str(emailId))
-        if success:
-            ics_filename = f'{emailId}.ics'
-            return send_file(ics_filename, as_attachment=True)
-        return {'error': True, 'message': 'Something went wrong with the ICS generation function'}
+        icsInDb = colIcs.find_one({'emailId': email['_id']})
+        if icsInDb:
+            return send_file('ics/' + icsInDb['icsFilename'], as_attachment=True)
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Something went wrong with the ICS generation function'}
 
-# omit for now, will implement in the future
 @emails.route('/search', methods=['GET'])
 def search():
     try:

@@ -14,6 +14,7 @@ db = client.fyp
 colEmails = db.emails
 colUsers = db.users
 colMetrics = db.emailAiMetrics
+colIcs = db.ics
 
 def checkRedisCache(outlookId):
     cache_client = redis.Redis(host='localhost', port=6379, db=0)
@@ -47,6 +48,17 @@ def categorizeIndividualEmail(emailId, sender, userId, spfDmarcCheck=False):
         colEmails.update_one({'_id': emailId}, {'$set': {'category': (aiScore + weight) // 2}}, upsert=True)
     else:
         colEmails.update_one({'_id': emailId}, {'$set': {'category': aiScore}}, upsert=True)
+    return
+
+def checkICS(emailId, userId):
+    outlookId = str(emailId)
+    userId = str(userId)
+    logic.regUser(userId)
+    success = logic.generateICS(str(outlookId))
+    print(success)
+    if success:
+        ics_filename = f'{emailId}.ics'
+        colIcs.insert_one({'emailId': ObjectId(emailId), 'icsFilename': ics_filename})
     return
 
 def processEmail(email, userId, emailsPerPage, cacheEnabled=False): # emailsPerPage passed by reference
@@ -107,6 +119,7 @@ def processEmail(email, userId, emailsPerPage, cacheEnabled=False): # emailsPerP
         })
 
         threading.Thread(target=categorizeIndividualEmail, args=(inserted.inserted_id, email['sender']['emailAddress'], userId,)).start()
+        threading.Thread(target=checkICS, args=(inserted.inserted_id, userId,)).start()
 
         emailObj = {
             'subject': email['subject'],
