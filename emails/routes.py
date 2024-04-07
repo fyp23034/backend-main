@@ -172,6 +172,9 @@ def getByCategory():
         elif category == 3:
             lowerBound = 8
             upperBound = 10
+        elif category == 4:
+            lowerBound = 11
+            upperBound = 11
 
         pageSize = 50
         # pageSize = 10   # for testing purposes
