@@ -240,6 +240,7 @@ def getDailySummary():
         logic.regUser(str(userId))
         epochTime = int(time.time())
         epochTime -= 86400
+        print(epochTime)
         summary = logic.dailySummary(epochTime)
         # split the summary by \n\n
         summary = summary.split('\n\n')
