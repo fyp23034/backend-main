@@ -114,7 +114,7 @@ def create_ics_file(summary, start_datetime, end_datetime, location, details, fi
     file_path = os.path.join(folder_path, file_name)
     with open(file_path, 'wb') as ics_file:
         ics_file.write(cal.to_ical())
-        
+
 def getMongoDBData():
     Emails.clear()
     #add 'emails' & 'fyp.emailAiMetrics' information
@@ -375,10 +375,15 @@ def suggestReply(emailID, command):
 
 #dailySummary(1710647345)
 def dailySummary(fromTime):
+    noEmails = True
     gptRequest = "Please make a summary from the below emails in a third person perspective like \"You just received an email about...\". Below are the list of emails to be summarized.\n----------------------------------------------\n"
     for Email in Emails:
         if (Email.category != None):
             if (Email.real):
-                if (Email.timeReceived >= fromTime) and (Email.category <= 4):
+                if (Email.timeReceived >= fromTime) and ((Email.category <= 4) or (Email.category == 11)):
+                    noEmails = False
                     gptRequest += Email.body + "\n----------------------------------------------\n"
-    return askGPT(gptRequest)
+    if noEmails:
+        return "You got no important emails today. Have a good day!"
+    else:
+        return askGPT(gptRequest)
