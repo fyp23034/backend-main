@@ -149,7 +149,8 @@ def getEmail(id):
             'bcc': response['bccRecipients'],
             'sender': response['sender']['emailAddress'],
             'category': score,
-            'ics': ics
+            'ics': ics,
+            'importanceScore': aiScore
         }
         return {'error': False, 'email': emailObj}
     except Exception as e:
