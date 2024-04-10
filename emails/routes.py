@@ -121,7 +121,7 @@ def getEmailsPerPage():
 def getEmail(id):
     try:
         accessToken = request.headers.get('Access-Token')
-        endpoint = f"https://graph.microsoft.com/v1.0/me/messages/{id}?&$select=sender,subject,body,ccRecipients,bccRecipients"
+        endpoint = f"https://graph.microsoft.com/v1.0/me/messages/{id}?&$select=sender,subject,body,ccRecipients,bccRecipients,webLink"
         headers = {"Authorization": f"Bearer {accessToken}"}
         response = requests.get(endpoint,headers=headers).json()
         if 'error' in response:
@@ -150,7 +150,8 @@ def getEmail(id):
             'sender': response['sender']['emailAddress'],
             'category': score,
             'ics': ics,
-            'importanceScore': aiScore
+            'importanceScore': aiScore,
+            'webLink': response['webLink']
         }
         return {'error': False, 'email': emailObj}
     except Exception as e:
