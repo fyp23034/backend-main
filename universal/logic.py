@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 import spacy
 import warnings
 import re
-from gtts import gTTS
 import os
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
