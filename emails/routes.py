@@ -138,7 +138,9 @@ def getEmail(id):
         elif aiScore in range(8, 11):
             score = 3
         icsExists = colIcs.find_one({'emailId': ObjectId(currEmail['_id'])})
-        print(currEmail['_id'])
+        
+        imptScore = colMetrics.find_one({'outlookId': id})['importanceScore']
+
         ics = False
         if icsExists:
             ics = True
@@ -150,7 +152,7 @@ def getEmail(id):
             'sender': response['sender']['emailAddress'],
             'category': score,
             'ics': ics,
-            'importanceScore': aiScore,
+            'importanceScore': imptScore,
             'webLink': response['webLink']
         }
         return {'error': False, 'email': emailObj}
