@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 import spacy
 import warnings
 import re
+from gtts import gTTS
 import os
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
@@ -189,11 +190,12 @@ def askGPT(question):
         response = openai.Completion.create(
             engine="gpt-3.5-turbo-instruct",
             prompt=question,
-            max_tokens=1000
+            max_tokens=1000,
+            temperature=0.1,
         )
         return str(response.choices[0].text.strip())
     except Exception as e:
-        return str(e)
+        print(str(e))
 
 #emailIDToEmailObject("65427c82d747ca686fa7382f")
 def emailIDToEmailObject(emailID):
@@ -205,98 +207,129 @@ def emailIDToEmailObject(emailID):
 
 
 
+
+
 #_______________________________________________________________________________________________________________________
 
 #used whenever new emails arrived
 def regUser(userID):
-    global currentUserID
-    currentUserID = userID
-    getMongoDBData()
-    collection = db.emailAiMetrics
-    for Email in reversed(Emails):
-        if (Email.real):
-            emailID = Email.emailID
-            if emailID is not None:
-                record = collection.find_one({"emailId": ObjectId(emailID)}, {'cSub': 1, 'cBody': 1})
-                if record:
-                    if record['cSub'] == "":
-                        cleaned = cleanText(Email.subject)
-                        collection.update_one({"emailId": ObjectId(emailID)}, {'$set': {'cSub': cleaned}})
-                        Email.cSub = cleaned
-                    if record['cBody'] == "":
-                        cleaned = cleanText(Email.body)
-                        collection.update_one({"emailId": ObjectId(emailID)}, {'$set': {'cBody': cleaned}})
-                        Email.cBody = cleaned
-                    if (record['cSub'] != "") or (record['cBody'] != ""):
-                        break
+    try:
+        global currentUserID
+        currentUserID = userID
+        getMongoDBData()
+        collection = db.emailAiMetrics
+        for Email in reversed(Emails):
+            if (Email.real):
+                emailID = Email.emailID
+                if emailID is not None:
+                    record = collection.find_one({"emailId": ObjectId(emailID)}, {'cSub': 1, 'cBody': 1})
+                    if record:
+                        if record['cSub'] == "":
+                            cleaned = cleanText(Email.subject)
+                            collection.update_one({"emailId": ObjectId(emailID)}, {'$set': {'cSub': cleaned}})
+                            Email.cSub = cleaned
+                        if record['cBody'] == "":
+                            cleaned = cleanText(Email.body)
+                            collection.update_one({"emailId": ObjectId(emailID)}, {'$set': {'cBody': cleaned}})
+                            Email.cBody = cleaned
+                        if (record['cSub'] != "") or (record['cBody'] != ""):
+                            break
+    except Exception as e:
+        print(str(e))
+
+
+
+
+
+
 
 def emailSummarization(emailID):
-    subject = str(emailIDToEmailObject(emailID).subject)
-    body = str(emailIDToEmailObject(emailID).body)
-    return askGPT("Summarize the email blow in a third person tone and cut it short as short as possible. \nSubject: \"" + subject + "\" \nBody: \"" + body + "\"")
-
+    try:
+        subject = str(emailIDToEmailObject(emailID).subject)
+        body = str(emailIDToEmailObject(emailID).body)
+        return askGPT(
+            "Summarize the email blow in a third person tone and cut it short as short as possible. \nSubject: \"" + subject + "\" \nBody: \"" + body + "\"")
+    except Exception as e:
+        print(str(e))
 
 def emailCategory(emailID):
-    score = importanceScore(emailIDToEmailObject(emailID))
-    db.emailAiMetrics.update_one({"emailId": ObjectId(emailID)}, {"$set": {"importanceScore": score}})
+    try:
+        score = importanceScore(emailIDToEmailObject(emailID))
+        db.emailAiMetrics.update_one({"emailId": ObjectId(emailID)}, {"$set": {"importanceScore": score}})
 
-    otherEmailsScore = []
-    for Email in Emails:
-        if (Email.real) and (Email.emailID != emailID) and (int(Email.importanceScore) != -1):
-            otherEmailsScore.append(float(Email.importanceScore))
+        otherEmailsScore = []
+        for Email in Emails:
+            if (Email.real) and (Email.emailID != emailID) and (int(Email.importanceScore) != -1):
+                otherEmailsScore.append(float(Email.importanceScore))
 
-    otherEmailsScore.append(score)
-    rank = sorted(otherEmailsScore, reverse=True).index(score) + 1
+        otherEmailsScore.append(score)
+        rank = sorted(otherEmailsScore, reverse=True).index(score) + 1
 
-    relativeRank = rank / len(otherEmailsScore)  # from 0 to 1, the smaller the number, the higher the rank in importance level
+        relativeRank = rank / len(
+            otherEmailsScore)  # from 0 to 1, the smaller the number, the higher the rank in importance level
 
-    if relativeRank <= 0.1:
-        category = 1
-    elif relativeRank <= 0.2:
-        category = 2
-    elif relativeRank <= 0.3:
-        category = 3
-    elif relativeRank <= 0.4:
-        category = 4
-    elif relativeRank <= 0.5:
-        category = 5
-    elif relativeRank <= 0.6:
-        category = 6
-    elif relativeRank <= 0.7:
-        category = 7
-    elif relativeRank <= 0.8:
-        category = 8
-    elif relativeRank <= 0.9:
-        category = 9
-    else:
-        category = 10
+        if relativeRank <= 0.1:
+            category = 1
+        elif relativeRank <= 0.2:
+            category = 2
+        elif relativeRank <= 0.3:
+            category = 3
+        elif relativeRank <= 0.4:
+            category = 4
+        elif relativeRank <= 0.5:
+            category = 5
+        elif relativeRank <= 0.6:
+            category = 6
+        elif relativeRank <= 0.7:
+            category = 7
+        elif relativeRank <= 0.8:
+            category = 8
+        elif relativeRank <= 0.9:
+            category = 9
+        else:
+            category = 10
 
-    tmp = list(db.whiteList.find({"userId": ObjectId(currentUserID)}, {"email": 1, "_id": 0}))
-    WhiteList = [d['email'] for d in tmp]
+        tmp = list(db.whiteList.find({"userId": ObjectId(currentUserID)}, {"email": 1, "_id": 0}))
+        WhiteList = [d['email'] for d in tmp]
 
-    for wEmails in WhiteList:
-        if str(wEmails) == str(emailIDToEmailObject(emailID).senderAddress):    #is whitelist
-            category = 11
+        for wEmails in WhiteList:
+            if str(wEmails) == str(emailIDToEmailObject(emailID).senderAddress):  # is whitelist
+                category = 11
 
-    db.emailAiMetrics.update_one({"emailId": ObjectId(emailID)}, {"$set": {"category": category}})
-    return category
+        db.emailAiMetrics.update_one({"emailId": ObjectId(emailID)}, {"$set": {"category": category}})
+        return category
+    except Exception as e:
+        print(str(e))
+
+
+
 
 
 #addToWhiteList("abc@hku.hk")
 def addToWhiteList(email):
-    record = {
-        "email": email,
-        "userId": ObjectId(currentUserID)
-    }
-    db.whiteList.insert_one(record)
+    try:
+        record = {
+            "email": email,
+            "userId": ObjectId(currentUserID)
+        }
+        db.whiteList.insert_one(record)
+    except Exception as e:
+        print(str(e))
+
 
 #userNLR("I want emails related to job, interview, and offers to assign a higher importance rating")
 def userNLR(req):
-    words = askGPT("I am working on an email system that determines an important rating for each email. The user specifies his preference of emails in a string: \"" + req + "\". Give me at least 10 words that might appear in the related emails. Only specify the words seperated with space in a line, do not include other sentences.")
-    direction = askGPT("I am working on an email system that determines an important rating for each email. The user specifies his preference of emails in a string: \"" + req + "\". Give me a -100 to 100 rating of how the user thinks those emails are important. Only specify the answer, do not include other sentences.")
-    words = cleanText(words)
-    direction = int(direction)*10000
-    addNewRecordsToFakeEmails(ObjectId(currentUserID), words, "", words, "", "", [], [], 1, direction)
+    try:
+        words = askGPT(
+            "I am working on an email system that determines an important rating for each email. The user specifies his preference of emails in a string: \"" + req + "\". Give me at least 10 words that might appear in the related emails. Only specify the words seperated with space in a line, do not include other sentences.")
+        direction = askGPT(
+            "I am working on an email system that determines an important rating for each email. The user specifies his preference of emails in a string: \"" + req + "\". Give me a -100 to 100 rating of how the user thinks those emails are important. Only specify the answer, do not include other sentences.")
+        words = cleanText(words)
+        direction = int(direction) * 10000
+        addNewRecordsToFakeEmails(ObjectId(currentUserID), words, "", words, "", "", [], [], 1, direction)
+    except Exception as e:
+        print(str(e))
+
 
 def parse_datetime(st_str):
     formats = ["%Y-%m-%d-%H-%M", "%Y-%m-%d-%H%M"]
@@ -344,20 +377,27 @@ def generateICS(emailID):
     except Exception as e:
         return False
 
+
+
+
 #output lists of emailIDs
 def smartSearch(request):
-    relatedWords = askGPT("A user search emails with the string: \"" + request + "\". Please give me at least 10 vocabularies that might also appear in the target emails.")
-    relatedWords = relatedWords.replace(". ", "")
-    for i in range(10):
-        relatedWords = relatedWords.replace(str(i), "")
-    relatedWords = cleanText(relatedWords + " " + request + " " + request + " " + request)
+    try:
+        relatedWords = askGPT(
+            "A user search emails with the string: \"" + request + "\". Please give me at least 10 vocabularies that might also appear in the target emails.")
+        relatedWords = relatedWords.replace(". ", "")
+        for i in range(10):
+            relatedWords = relatedWords.replace(str(i), "")
+        relatedWords = cleanText(relatedWords + " " + request + " " + request + " " + request)
 
-    relatedEmails = []
-    for Email in Emails:
-        if (Email.real):
-            if (calculate_similarity_for_sentences(Email.csub,relatedWords) > 0):
-                relatedEmails.append(Email.emailID)
-    return relatedEmails
+        relatedEmails = []
+        for Email in Emails:
+            if (Email.real):
+                if (calculate_similarity_for_sentences(Email.csub, relatedWords) > 0):
+                    relatedEmails.append(Email.emailID)
+        return relatedEmails
+    except Exception as e:
+        print(str(e))
 
 #suggestReply("65427c82d747ca686fa7382f", "accept the interview")
 #return a string
@@ -380,16 +420,20 @@ def suggestReply(emailID, command):
 
 #dailySummary(1710647345)
 def dailySummary(fromTime):
-    noEmails = True
-    gptRequest = "Please make a summary from the below emails in a third person perspective like \"You just received an email about...\". You can skip contents that you think that is not important. Below are the list of emails to be summarized.\n----------------------------------------------\n"
-    for Email in Emails:
-        if (Email.category != None):
-            if (Email.real):
-                if (Email.timeReceived >= fromTime) and ((Email.category <= 4) or (Email.category == 11)):
-                    noEmails = False
-                    gptRequest += Email.body + "\n----------------------------------------------\n"
-    if noEmails:
-        response = "You got no important emails today. Have a good day!"
-    else:
-        response = askGPT(gptRequest)
-    return response
+    try:
+        noEmails = True
+        gptRequest = "Please make a summary from the below emails in a third person perspective like \"You just received an email about...\". You can skip contents that you think that is not important. Below are the list of emails to be summarized.\n----------------------------------------------\n"
+        for Email in Emails:
+            if (Email.category != None):
+                if (Email.real):
+                    if (Email.timeReceived >= fromTime) and ((Email.category <= 4) or (Email.category == 11)):
+                        noEmails = False
+                        gptRequest += Email.body + "\n----------------------------------------------\n"
+        if noEmails:
+            response = "You got no important emails today. Have a good day!"
+        else:
+            response = askGPT(gptRequest)
+        audio = gTTS(text=response, lang="en", slow=False)
+        return response
+    except Exception as e:
+        print(str(e))
