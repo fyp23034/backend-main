@@ -15,3 +15,7 @@ Refer to: https://connecthkuhk-my.sharepoint.com/:x:/g/personal/sabcyt02_connect
 
 ### OR...
 The /docs folder in this repo
+
+### Common Problems
+1. OSError: [E053] Could not read config file from .../miniconda3/lib/python3.11/site-packages/en_core_web_sm/en_core_web_sm-2.2.0/config.cfg
+   --> please refer to https://stackoverflow.com/questions/76321221/error-importerror-cannot-import-name-get-object-size-from-bson

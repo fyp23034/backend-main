@@ -331,8 +331,6 @@ def userNLR(req):
         print(str(e))
 
 
-
-
 def parse_datetime(st_str):
     formats = ["%Y-%m-%d-%H-%M", "%Y-%m-%d-%H%M"]
     for fmt in formats:
