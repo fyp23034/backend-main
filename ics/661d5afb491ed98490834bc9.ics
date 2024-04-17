@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Custom Calendar Event//mxm.dk//
+BEGIN:VEVENT
+SUMMARY:Meeting with Bruno
+DTSTART:20240415T165000
+DTEND:20240415T165000
+UID:20240415T165000@emailefficiencybooster
+DESCRIPTION:
+LOCATION:Unfortunately\, as per the given information\, the location for t
+ he meeting with Bruno is not mentioned. Please provide the location to acc
+ urately answer the question.
+PRIORITY:5
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Custom Calendar Event//mxm.dk//
+BEGIN:VEVENT
+SUMMARY:Event Topic: Reminder of Upcoming Gathering
+DTSTART:20240415T170400
+DTEND:20240415T170400
+UID:20240415T170400@emailefficiencybooster
+DESCRIPTION:
+LOCATION:Unfortunately\, as there is no location information provided in t
+ he email\, I am unable to provide the requested output. Please provide the
+  location in order for me to fulfill your request.
+PRIORITY:5
+END:VEVENT
+END:VCALENDAR
