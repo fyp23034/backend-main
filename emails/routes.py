@@ -19,6 +19,7 @@ colIcs = db.ics
 
 summarizerPrompt = "You are an email summarization bot. Please summarize emails I provide you."
 
+
 @emails.route('/', methods=['GET'])
 def getEmailsPerPage():
     accessToken = request.headers.get('Access-Token')
@@ -44,28 +45,32 @@ def getEmailsPerPage():
     userEmail = userResponse['userPrincipalName']
 
     # get the _id field from recipient
-    userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+    userId = colUsers.find_one(
+        {'email': userResponse['userPrincipalName']})['_id']
     if pageNum <= 1:    # likely a recent login so register the user in our stateless AI service
         logic.regUser(str(userId))
 
     # get the first n emails and process them
     endpoint = f"https://graph.microsoft.com/v1.0/me/messages?&$filter=receivedDateTime ge 1900-01-01T00:00:00Z and (not (sender/emailAddress/address eq '{userEmail}'))&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$orderby=receivedDateTime desc&$skip={(pageNum-1)*50}&$count=true"
-    response = requests.get(endpoint,headers=headers).json()
+    response = requests.get(endpoint, headers=headers).json()
     totalEmails = response['@odata.count']
     emailsPerPage = []
     cnt = 0
     foundInDb = False
     for email in response['value']:
-        processRes = processEmail(email, userId, emailsPerPage, cacheEnabled=False) # change to True for caching
+        # change to True for caching
+        processRes = processEmail(
+            email, userId, emailsPerPage, cacheEnabled=False)
         if not processRes[0]:
             return {'error': True, 'message': processRes[1]}
         elif processRes[1] == 'Email already exists':
             # email already found in the database, so we just need to get the next 10 - cnt emails
-            nextFew = colEmails.find({'userId': userId}).sort('receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
+            nextFew = colEmails.find({'userId': userId}).sort(
+                'receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
             foundInDb = True
             break
         cnt += 1
-    
+
     if foundInDb:
         currLen = len(emailsPerPage)
         for email in nextFew:
@@ -90,17 +95,18 @@ def getEmailsPerPage():
             if foundInDbSecondRound:
                 break
             endpoint = response['@odata.nextLink']
-            response = requests.get(endpoint,headers=headers).json()
+            response = requests.get(endpoint, headers=headers).json()
             for email in response['value']:
                 processRes = processEmail(email, userId, emailsPerPage)
                 if not processRes[0]:
                     return {'error': True, 'message': processRes[1]}
                 elif processRes[1] == 'Email already exists':
-                    nextFew = colEmails.find({'userId': userId}).sort('receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
+                    nextFew = colEmails.find({'userId': userId}).sort(
+                        'receivedTime', -1).skip((50 * (pageNum - 1)) + cnt + 1).limit(50)
                     foundInDbSecondRound = True
                     break
                 cnt += 1
-        
+
         if foundInDbSecondRound:
             currLen = len(emailsPerPage)
             for email in nextFew:
@@ -117,18 +123,20 @@ def getEmailsPerPage():
 
     return {'error': False, 'emails': emailsPerPage, 'totalEmails': totalEmails}
 
+
 @emails.route('/<string:id>', methods=['GET'])
 def getEmail(id):
     try:
         accessToken = request.headers.get('Access-Token')
         endpoint = f"https://graph.microsoft.com/v1.0/me/messages/{id}?&$select=sender,subject,body,ccRecipients,bccRecipients,webLink"
         headers = {"Authorization": f"Bearer {accessToken}"}
-        response = requests.get(endpoint,headers=headers).json()
+        response = requests.get(endpoint, headers=headers).json()
         if 'error' in response:
             return {'error': True, 'message': response['error']['message']}, 500
         currEmail = colEmails.find_one({'outlookId': id})
         aiScore = currEmail['category']
-        threading.Thread(target=updateClicks, args=(id, currEmail)).start() # update clicks using multithreading
+        # update clicks using multithreading
+        threading.Thread(target=updateClicks, args=(id, currEmail)).start()
         score = 0
         # if category is from 0-3, score = 1. if category is from 4-7, score = 2. if category is from 8-10, score = 3
         if aiScore in range(0, 4):
@@ -137,8 +145,10 @@ def getEmail(id):
             score = 2
         elif aiScore in range(8, 11):
             score = 3
+        elif aiScore == 11:
+            score = 4
         icsExists = colIcs.find_one({'emailId': ObjectId(currEmail['_id'])})
-        
+
         imptScore = colMetrics.find_one({'outlookId': id})['importanceScore']
 
         ics = False
@@ -160,6 +170,7 @@ def getEmail(id):
         print(e)
         return {'error': True, 'message': 'Invalid access token'}, 500
 
+
 @emails.route('/getByCategory', methods=['GET'])
 def getByCategory():
     try:
@@ -172,7 +183,8 @@ def getByCategory():
         category = request.args.get('category')
         category = int(category)
 
-        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+        userId = colUsers.find_one(
+            {'email': userResponse['userPrincipalName']})['_id']
 
         if category == 1:
             lowerBound = 0
@@ -190,10 +202,11 @@ def getByCategory():
         pageSize = 50
         # pageSize = 10   # for testing purposes
         skipAmount = (pageNum-1)*pageSize
-        emails = colEmails.find({'category': {'$gte': lowerBound, '$lte': upperBound}, 
+        emails = colEmails.find({'category': {'$gte': lowerBound, '$lte': upperBound},
                                  'userId': userId}).sort('receivedTime', -1).skip(skipAmount).limit(pageSize)
         emailsPerPage = []
-        emailCount = colEmails.count_documents({'category': {'$gte': lowerBound, '$lte': upperBound}, 'userId': userId})
+        emailCount = colEmails.count_documents(
+            {'category': {'$gte': lowerBound, '$lte': upperBound}, 'userId': userId})
         for email in emails:
             emailsPerPage.append({
                 'subject': email['subject'],
@@ -206,11 +219,14 @@ def getByCategory():
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Invalid cateogyr or database error'}
-    
+
 # some test route for testing purposes only
+
+
 @emails.route('/test')
 def test():
     return {'error': False}
+
 
 @emails.route('/changeCategory/<string:id>', methods=['POST'])
 def changeCategory(id):
@@ -226,11 +242,15 @@ def changeCategory(id):
             setCat = 9
         elif category == 4:
             setCat = 11
-        colEmails.update_one({'outlookId': outlookId}, {'$set': {'category': setCat}})
+        colEmails.update_one({'outlookId': outlookId}, {
+                             '$set': {'category': setCat}})
+        colMetrics.update_one({'outlookId': outlookId}, {
+                              '$set': {'category': setCat}})
         return {'error': False}
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Invalid email ID or database error'}
+
 
 @emails.route('/dailySummary', methods=['GET'])
 def getDailySummary():
@@ -240,18 +260,21 @@ def getDailySummary():
         userResponse = getUser(accessToken)
         if 'error' in userResponse:
             return {'error': True, 'message': userResponse['message']}
-        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+        userId = colUsers.find_one(
+            {'email': userResponse['userPrincipalName']})['_id']
         logic.regUser(str(userId))
         epochTime = int(time.time())
         epochTime -= 86400
         print(epochTime)
         summary = logic.dailySummary(epochTime)
+        print(summary)
         # split the summary by \n\n
         summary = summary.split('\n\n')
         return {'error': False, 'summary': summary}
     except Exception as e:
         print(e)
         return {'error': True, 'message': 'Something went wrong with the AI summarise function'}
+
 
 @emails.route('/generateICS/<string:id>', methods=['GET'])
 def generateICS(id):
@@ -264,6 +287,7 @@ def generateICS(id):
         print(e)
         return {'error': True, 'message': 'Something went wrong with the ICS generation function'}
 
+
 @emails.route('/search', methods=['GET'])
 def search():
     try:
@@ -273,10 +297,10 @@ def search():
         if 'error' in userResponse:
             return {'error': True, 'message': userResponse['message']}
 
-#         relatedWords = logic.askGPT(f"""I am developing for an email smart search function and the user requests: '{searchString}'. Please extract the main search keywords from this user request. 
+#         relatedWords = logic.askGPT(f"""I am developing for an email smart search function and the user requests: '{searchString}'. Please extract the main search keywords from this user request.
 
-# Examples: 
-# 1. 'any emails related to interviews?' should give keywords like 'interview', 'interviews', 'application', 'job posting'. 
+# Examples:
+# 1. 'any emails related to interviews?' should give keywords like 'interview', 'interviews', 'application', 'job posting'.
 # 2. 'anything related to presentations?' should give keywords like 'presentation', 'project', 'meeting'.
 
 # Responses should be in the form:
@@ -294,7 +318,7 @@ def search():
 
         endpoint = f'https://graph.microsoft.com/v1.0/me/messages?$search="{searchString}"&$select=body,toRecipients,sender,subject,bodyPreview,receivedDateTime&$count=true'
         headers = {"Authorization": f"Bearer {accessToken}"}
-        response = requests.get(endpoint,headers=headers).json()   
+        response = requests.get(endpoint, headers=headers).json()
         emailReturnList = []
         for email in response['value']:
             emailReturnList.append({
@@ -309,6 +333,7 @@ def search():
         print(e)
         return {'error': True, 'message': 'Something went wrong with the smart search function'}
 
+
 @emails.route('/smartSearch', methods=['GET'])
 def smartSearch():
     try:
@@ -317,7 +342,8 @@ def smartSearch():
         userResponse = getUser(accessToken)
         if 'error' in userResponse:
             return {'error': True, 'message': userResponse['message']}
-        userId = colUsers.find_one({'email': userResponse['userPrincipalName']})['_id']
+        userId = colUsers.find_one(
+            {'email': userResponse['userPrincipalName']})['_id']
         logic.regUser(str(userId))
         emailIdList = logic.smartSearch(searchString)
         # change emailIdList to ObjectId
@@ -333,9 +359,10 @@ def smartSearch():
                 'id': email['outlookId'],
                 'sender': email['sender']
             })
-        
+
         # sort the emailReturnList by time in descending order
-        emailReturnList = sorted(emailReturnList, key=lambda x: x['time'], reverse=True)
+        emailReturnList = sorted(
+            emailReturnList, key=lambda x: x['time'], reverse=True)
         return {'error': False, 'emails': emailReturnList, 'totalEmails': len(emailReturnList)}
     except Exception as e:
         print(e)
@@ -354,7 +381,8 @@ def summarise(id):
         body = soup.get_text()
 
         # CALL THE SUMMARISATION API HERE
-        prompt = [{"role": "system", "content": summarizerPrompt}, {"role": "user", "content": body}]
+        prompt = [{"role": "system", "content": summarizerPrompt},
+                  {"role": "user", "content": body}]
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=prompt,

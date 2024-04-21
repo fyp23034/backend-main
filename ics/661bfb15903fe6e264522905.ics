@@ -1,0 +1,14 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Custom Calendar Event//mxm.dk//
+BEGIN:VEVENT
+SUMMARY:Registration for Upcoming Event
+DTSTART:20240414T154900
+DTEND:20240414T154900
+UID:20240414T154900@emailefficiencybooster
+DESCRIPTION:
+LOCATION:Not provided. Please check the registration confirmation email fo
+ r the location of the event.
+PRIORITY:5
+END:VEVENT
+END:VCALENDAR

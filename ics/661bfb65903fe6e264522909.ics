@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Custom Calendar Event//mxm.dk//
+BEGIN:VEVENT
+SUMMARY:Reminder for Registration
+DTSTART:20240414T234900
+DTEND:20240414T234900
+UID:20240414T234900@emailefficiencybooster
+DESCRIPTION:
+LOCATION:In the email\, the sender asks the recipient to use a link that i
+ s attached\, without specifying the location of the event. Therefore\, the
+ re is no location information to output.
+PRIORITY:5
+END:VEVENT
+END:VCALENDAR

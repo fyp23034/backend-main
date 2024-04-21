@@ -1,0 +1,13 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Custom Calendar Event//mxm.dk//
+BEGIN:VEVENT
+SUMMARY:Farewell Party in College
+DTSTART:20240417T022100
+DTEND:20240417T022100
+UID:20240417T022100@emailefficiencybooster
+DESCRIPTION:
+LOCATION:There is no location mentioned in the email.
+PRIORITY:5
+END:VEVENT
+END:VCALENDAR
